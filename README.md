@@ -1,0 +1,2 @@
+# goguru
+go
