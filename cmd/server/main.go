@@ -5,13 +5,19 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"os"
 )
 
 var templates *template.Template
+var dev bool
 
 func init() {
-	// Parse all templates (use project-relative path, not "../../...")
-	templates = template.Must(template.ParseGlob("web/templates/*.html"))
+	// Determine environment once at startup
+	dev = os.Getenv("ENV") == "development"
+	// In production, parse and cache templates once
+	if !dev {
+		templates = template.Must(template.ParseGlob("web/templates/*.html"))
+	}
 }
 
 func main() {
@@ -28,7 +34,7 @@ func main() {
 	http.HandleFunc("/editor", editorHandler)
 
 	port := ":8080"
-	fmt.Printf("Server starting on http://localhost%s\n", port)
+	fmt.Printf("Server starting on http://localhost%s (dev=%v)\n", port, dev)
 	log.Fatal(http.ListenAndServe(port, nil))
 }
 
@@ -57,9 +63,22 @@ func editorHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func renderTemplate(w http.ResponseWriter, tmpl string, data interface{}) {
-	err := templates.ExecuteTemplate(w, tmpl, data)
-	if err != nil {
+	// In development, re-parse templates on each request so changes appear on refresh
+	var t *template.Template
+	var err error
+	if dev {
+		t, err = template.ParseGlob("web/templates/*.html")
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			log.Printf("Template parse error: %v", err)
+			return
+		}
+	} else {
+		t = templates
+	}
+
+	if err = t.ExecuteTemplate(w, tmpl, data); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
-		log.Printf("Template error: %v", err)
+		log.Printf("Template exec error: %v", err)
 	}
 }

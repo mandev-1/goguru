@@ -1,21 +1,32 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>{{ .Title }}</title>
-  <link rel="stylesheet" href="/static/style.css">
-</head>
-<body>
-  <header>
-    <h1>Camagru - Photo Editor</h1>
-  </header>
-  <main>
-    <h2>Hello World!</h2>
-    <p>Welcome to Camagru - Your webcam photo editing app</p>
-  </main>
-  <footer>
-    <p>&copy; 2025 MMAN</p>
-  </footer>
-</body>
-</html>
+{{define "title"}}Home{{end}}
+
+{{define "content"}}
+<div class="hero">
+    <h1>Welcome to Camagru</h1>
+    <p class="hero-subtitle">Create amazing photos with your webcam and custom overlays</p>
+    <div class="hero-actions">
+        <a href="/editor" class="btn btn-primary">Start Creating</a>
+        <a href="/gallery" class="btn btn-secondary">View Gallery</a>
+    </div>
+</div>
+
+<div class="features">
+    <div class="feature-card">
+        <div class="feature-icon">📸</div>
+        <h3>Webcam Capture</h3>
+        <p>Take photos directly from your webcam or upload your own images</p>
+    </div>
+    <div class="feature-card">
+        <div class="feature-icon">🎨</div>
+        <h3>Custom Overlays</h3>
+        <p>Add fun frames and stickers to your photos</p>
+    </div>
+    <div class="feature-card">
+        <div class="feature-icon">💬</div>
+        <h3>Share & Interact</h3>
+        <p>Like and comment on photos from the community</p>
+    </div>
+</div>
+{{end}}
+
+{{template "base" .}}

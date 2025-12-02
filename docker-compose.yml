@@ -2,7 +2,9 @@ version: '3.8'
 
 services:
   web:
-    build: .
+    image: golang:1.25.4-alpine
+    working_dir: /app
+    command: ["sh", "-c", "go run ./cmd/server"]
     ports:
       - "8080:8080"
     volumes:

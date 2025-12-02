@@ -1,0 +1,40 @@
+{{define "base"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{template "title" .}} - Camagru</title>
+    <link rel="stylesheet" href="/static/style.css">
+    {{template "head" .}}
+</head>
+<body>
+    <header>
+        <nav class="navbar">
+            <div class="nav-brand">
+                <a href="/">📷 Camagru</a>
+            </div>
+            <ul class="nav-links">
+                <li><a href="/">Home</a></li>
+                <li><a href="/gallery">Gallery</a></li>
+                <li><a href="/editor">Editor</a></li>
+                <li><a href="/login">Login</a></li>
+                <li><a href="/register">Register</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        {{template "content" .}}
+    </main>
+
+    {{template "footer" .}}
+
+
+    {{template "scripts" .}}
+</body>
+</html>
+{{end}}
+
+{{define "head"}}{{end}}
+{{define "scripts"}}{{end}}
