@@ -1,0 +1,47 @@
+{{define "title"}}Profile{{end}}
+
+{{define "content"}}
+<h1>Your Profile</h1>
+<form id="profileForm">
+	<div class="form-group">
+		<label for="username">Username</label>
+		<input type="text" id="username" name="username" value="{{.Username}}" />
+	</div>
+	<div class="form-group">
+		<label for="email">Email</label>
+		<input type="email" id="email" name="email" value="{{.Email}}" />
+	</div>
+	<div class="form-group">
+		<label><input type="checkbox" id="notify" name="notify" {{if .Notify}}checked{{end}} /> Notify on new comments</label>
+	</div>
+	<button type="submit">Save Changes</button>
+</form>
+<div id="profileMsg" class="error-message"></div>
+
+<form id="logoutForm" style="margin-top:16px;">
+	<button type="submit">Logout</button>
+	<div id="logoutMsg" class="error-message"></div>
+	</form>
+{{end}}
+
+{{define "scripts"}}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+	const pf = document.getElementById('profileForm');
+	pf.addEventListener('submit', (e) => {
+		e.preventDefault();
+		const data = new URLSearchParams(new FormData(pf));
+		fetch('/user', { method: 'POST', headers: {'Content-Type':'application/x-www-form-urlencoded'}, body: data.toString() })
+			.then(r => r.text()).then(() => { document.getElementById('profileMsg').textContent = 'Profile updated'; });
+	});
+	const lf = document.getElementById('logoutForm');
+	lf.addEventListener('submit', (e) => {
+		e.preventDefault();
+		fetch('/logout', { method: 'POST' })
+			.then(() => { window.location.href = '/'; });
+	});
+});
+</script>
+{{end}}
+
+{{template "base" .}}

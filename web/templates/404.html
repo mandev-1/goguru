@@ -1,16 +1,11 @@
-<!doctype html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>Page not found</title>
-  <link rel="stylesheet" href="/static/style.css">
-</head>
-<body>
-  <h1>404 — Page not found</h1>
-  <p>The page you requested doesn’t exist.</p>
-  <p><a href="/">Go home</a></p>
+{{define "title"}}404{{end}}
 
-      {{template "footer" .}}
+{{define "content"}}
+  <section class="centered">
+    <h1>404 — Page not found</h1>
+    <p>The page you requested doesn’t exist.</p>
+    <p><a class="btn" href="/">Go home</a></p>
+  </section>
+{{end}}
 
-</body>
-</html>
+{{template "base" .}}

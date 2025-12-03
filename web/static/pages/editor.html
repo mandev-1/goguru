@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Camagru — Editor</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <link rel="icon" href="/static/favicon.ico" type="image/x-icon">
+  <script src="/static/editor.js" defer></script>
+</head>
+<body>
+  <header class="navbar">
+    <div class="nav-brand"><a href="/">📷 Camagru</a></div>
+    <ul class="nav-links">
+      <li><a href="/">Home</a></li>
+      <li><a href="/gallery">Gallery</a></li>
+      <li><a href="/editor">Editor</a></li>
+      <li><a href="/user">Profile</a></li>
+      <li><span id="user-display" style="color: white; margin-left: 15px;"></span></li>
+    </ul>
+  </header>
+  <main>
+    <nav class="editor-navbar">
+      <div class="navbar-left"><h2 class="navbar-title">Image Editor</h2></div>
+      <div class="navbar-center"><span class="navbar-subtitle">Camagru - Photo Editor</span></div>
+      <div class="navbar-right"><button class="navbar-btn navbar-btn-primary">Help</button></div>
+    </nav>
+    <div class="editor-main">
+      <section class="editor-canvas">
+        <div class="canvas-toolbar">
+          <button id="zoom-out-btn" class="canvas-tool-btn" title="Zoom Out">-</button>
+          <span id="zoom-level" class="zoom-level">100%</span>
+          <button id="zoom-in-btn" class="canvas-tool-btn" title="Zoom In">+</button>
+        </div>
+        <div class="canvas-content">
+          <div class="canvas-stage" id="canvas-stage">
+            <video id="webcam" autoplay playsinline class="canvas-video"></video>
+            <canvas id="photo-canvas" style="display:none;"></canvas>
+          </div>
+        </div>
+        <div class="canvas-footer">
+          <button id="capture-btn" class="toolbar-btn-apply" disabled>Take Picture</button>
+        </div>
+      </section>
+      <aside class="editor-toolbar">
+        <div class="toolbar-section">
+          <h3 class="toolbar-title">Superposable Images</h3>
+          <div class="filter-grid">
+            <div class="filter-item" data-src="/static/assets/cat.png">
+              <img src="/static/assets/cat.png" alt="Cat" class="filter-preview" />
+              <label>Confused Cat</label>
+            </div>
+            <div class="filter-item" data-src="/static/assets/cat2.png">
+              <img src="/static/assets/cat2.png" alt="Cat with hat" class="filter-preview" />
+              <label>Summer Cat</label>
+            </div>
+          </div>
+        </div>
+        <div class="toolbar-section">
+          <h3 class="toolbar-title">Or Upload an Image</h3>
+          <input type="file" id="upload-btn" accept="image/*" />
+          <button id="place-image-btn" class="toolbar-btn-apply" disabled>Place Image</button>
+        </div>
+      </aside>
+      <aside class="editor-side-panel">
+        <h3 class="toolbar-title">Previous Pictures</h3>
+        <div class="thumbnail-list"></div>
+      </aside>
+    </div>
+  </main>
+  <script src="/static/auth.js"></script>
+</body>
+</html>

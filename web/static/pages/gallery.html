@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Camagru — Gallery</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <link rel="icon" href="/static/favicon.ico" type="image/x-icon">
+</head>
+<body>
+  <header class="navbar">
+    <div class="nav-brand"><a href="/">📷 Camagru</a></div>
+    <ul class="nav-links">
+      <li><a href="/">Home</a></li>
+      <li><a href="/gallery">Gallery</a></li>
+      <li><a href="/editor">Editor</a></li>
+      <li><a href="/user">Profile</a></li>
+      <li><span id="user-display" style="color: white; margin-left: 15px;"></span></li>
+    </ul>
+  </header>
+  <main>
+    <h1>Gallery</h1>
+    <p>This is a static gallery page.</p>
+    <div class="gallery-list">
+      <div class="gallery-item">
+        <img src="/static/assets/cat.png" alt="Example" style="max-width:100%; height:auto;" />
+        <div class="gallery-meta"><span>By demo</span><span>Likes: <strong>0</strong></span></div>
+      </div>
+    </div>
+  </main>
+  <script src="/static/auth.js"></script>
+</body>
+</html>

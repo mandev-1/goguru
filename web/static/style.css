@@ -1,3 +1,18 @@
+/* Ensure email input matches text/password styling */
+input[type="email"] {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    font: inherit;
+    color: inherit;
+}
+
+/* Placeholder color consistency across inputs */
+input[type="email"]::placeholder,
+input[type="text"]::placeholder,
+input[type="password"]::placeholder {
+    color: var(--muted, #6b7280);
+}
 * {
     margin: 0;
     padding: 0;
@@ -5,9 +20,9 @@
 }
 
 body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    font-family: "72", "72full", Arial, Helvetica, sans-serif;
     line-height: 1.6;
-    color: #333;
+    color: rgb(19, 30, 41);
     min-height: 100vh;
     display: flex;
     flex-direction: column;
@@ -40,6 +55,34 @@ footer {
     margin-top: auto;
 }
 
+/* Site Navbar to match login aesthetic */
+.navbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: #1e2936;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+.nav-brand a {
+    color: rgb(174, 194, 224);
+    font-weight: 600;
+    text-decoration: none;
+}
+.nav-links {
+    list-style: none;
+    display: flex;
+    gap: 12px;
+}
+.nav-links a {
+    color: rgb(174, 194, 224);
+    text-decoration: none;
+    font-size: 14px;
+}
+.nav-links a:hover {
+    color: #fff;
+}
+
 /* Mobile responsive */
 @media (max-width: 768px) {
     header, main, footer {
@@ -65,7 +108,7 @@ body {
     min-height: 100vh;
     display: flex;
     flex-direction: column;
-    background: #f5f5f5;
+    background: #1e2936;
 }
 
 header {
@@ -143,6 +186,34 @@ footer {
     margin-bottom: 12px;
 }
 
+.form-login-button {
+    text-align: end;
+    margin-bottom: 16px;
+}
+
+.form-login-button button {
+    font-weight: 600;
+    padding-top: 0;
+    padding-bottom: 0;
+    color: rgb(0, 60, 255);
+    font-family: "72", "72full", Arial, Helvetica, sans-serif;
+}
+
+.form-links{
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 8px;
+    border-bottom: 1px solid rgba(34, 53, 72, 0.1);
+
+}
+
+.form-links a {
+    font-size: 12px;
+    color: rgb(123, 145, 168);
+    font-weight: 400;
+}
+
 label {
     font-size: 12px;
     font-weight: 500;
@@ -152,7 +223,8 @@ label {
 }
 
 input[type="text"],
-input[type="password"] {
+input[type="password"],
+input[type="email"] {
     padding: 11px 12px;
     border: 1px solid rgba(34, 53, 72, 0.2);
     border-radius: 4px;
@@ -165,12 +237,14 @@ input[type="password"] {
 }
 
 input[type="text"]:hover,
-input[type="password"]:hover {
+input[type="password"]:hover,
+input[type="email"]:hover {
     border-color: rgba(34, 53, 72, 0.3);
 }
 
 input[type="text"]:focus,
-input[type="password"]:focus {
+input[type="password"]:focus,
+input[type="email"]:focus {
     outline: none;
     border-color: rgb(34, 53, 72);
     box-shadow: rgba(34, 53, 72, 0.15) 0px 0px 0px 2px;
@@ -178,13 +252,15 @@ input[type="password"]:focus {
 }
 
 input[type="text"]::placeholder,
-input[type="password"]::placeholder {
+input[type="password"]::placeholder,
+input[type="email"]::placeholder {
     color: rgb(123, 145, 168);
     opacity: 0.7;
 }
 
 input[type="text"]:disabled,
-input[type="password"]:disabled {
+input[type="password"]:disabled,
+input[type="email"]:disabled {
     background-color: rgba(34, 53, 72, 0.05);
     border-color: rgba(34, 53, 72, 0.1);
     color: rgba(34, 53, 72, 0.5);
@@ -278,3 +354,287 @@ button:disabled {
         transform: translate(-50%, -50%);
     }
 }
+
+/* ============ EDITOR NAVBAR STYLES ============ */
+.editor-navbar {
+    background: #1e2936;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 12px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+}
+
+.navbar-left { flex: 0 0 auto; }
+
+.navbar-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: rgb(174, 194, 224);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.navbar-center { flex: 1; text-align: center; }
+
+.navbar-subtitle {
+    font-size: 13px;
+    font-weight: 500;
+    color: white;
+}
+
+.navbar-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.navbar-btn {
+    background: transparent;
+    border: none;
+    color: rgb(174, 194, 224);
+    cursor: pointer;
+    padding: 6px 12px;
+    border-radius: 4px;
+    transition: all 0.15s ease;
+    font-size: 12px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.navbar-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+.navbar-btn-primary {
+    background: rgb(66, 165, 245);
+    color: white;
+    border: 1px solid rgb(66, 165, 245);
+}
+
+.navbar-btn-primary:hover {
+    background: rgb(33, 150, 243);
+    border-color: rgb(33, 150, 243);
+}
+
+/* ============ MAIN EDITOR LAYOUT ============ */
+.editor-main {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr 240px 240px;
+    gap: 12px;
+    padding: 12px;
+    background: #1e2936;
+}
+
+/* ============ TOOLBAR (middle column) ============ */
+.editor-toolbar {
+    background: #263344;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 4px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    overflow-y: auto;
+    grid-column: 2 / 3;
+}
+
+.toolbar-section { display: flex; flex-direction: column; gap: 12px; }
+
+.toolbar-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: rgb(174, 194, 224);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.filter-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+.filter-item {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 4px;
+    transition: all 0.15s ease;
+    border: 1px solid transparent;
+}
+
+.filter-item:hover { background: rgba(255, 255, 255, 0.05); }
+
+.filter-item.active { background: rgba(66, 165, 245, 0.2); border-color: rgb(66, 165, 245); }
+
+.filter-preview {
+    width: 100%;
+    height: 60px;
+    border-radius: 2px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    object-fit: cover;
+}
+
+.filter-item label { font-size: 11px; color: rgb(174, 194, 224); text-align: center; font-weight: 500; }
+
+#upload-btn { color: white; }
+
+.toolbar-btn-apply {
+    padding: 10px 16px;
+    background: rgb(66, 165, 245);
+    color: white;
+    border: 1px solid rgb(66, 165, 245);
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.toolbar-btn-apply:hover:not(:disabled) {
+    background: rgb(33, 150, 243);
+    border-color: rgb(33, 150, 243);
+    box-shadow: rgba(66, 165, 245, 0.3) 0px 4px 12px 0px;
+}
+
+.toolbar-btn-apply:disabled {
+    background-color: rgba(66, 165, 245, 0.5);
+    border-color: rgba(66, 165, 245, 0.5);
+    cursor: not-allowed;
+}
+
+/* ============ CANVAS (left column) ============ */
+.editor-canvas {
+    background: #1a2332;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+    grid-column: 1 / 2;
+    grid-row: 1 / 1;
+}
+
+.canvas-toolbar {
+    background: #263344;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.canvas-tool-btn {
+    background: transparent;
+    border: none;
+    color: rgb(174, 194, 224);
+    cursor: pointer;
+    padding: 6px 8px;
+    border-radius: 4px;
+    transition: all 0.15s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.canvas-tool-btn:hover { background: rgba(255, 255, 255, 0.1); color: white; }
+
+.zoom-level { font-size: 12px; color: rgb(174, 194, 224); margin: 0 8px; min-width: 50px; text-align: center; }
+
+.canvas-content {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    overflow: hidden;
+    position: relative;
+    background-color: #fff; /* outside the stage should be white */
+    width: 1080px; /* fixed pixel resolution */
+    height: 720px; /* fixed pixel resolution */
+    margin: 0 auto;
+}
+
+.canvas-stage {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    transform-origin: center center;
+    background: #000; /* stage itself is black */
+}
+
+.overlay-image {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 25%;
+    height: auto;
+    cursor: move;
+    user-select: none;
+}
+
+.canvas-video,
+.canvas-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.2s ease-out;
+}
+
+.canvas-footer {
+    background: #263344;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 12px 16px;
+    display: flex;
+    justify-content: center;
+}
+
+/* ============ SIDE PANEL (right column) ============ */
+.editor-side-panel {
+    background: #263344;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 4px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+.canvas-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.2s ease-out;
+}
+.thumbnail { width: 100%; height: auto; border-radius: 4px; cursor: pointer; border: 2px solid transparent; transition: border-color 0.2s; }
+.thumbnail:hover { border-color: rgb(66, 165, 245); }
+
+/* ============ SCROLLBAR ============ */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(123, 145, 168, 0.5); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(123, 145, 168, 0.8); }
+
+/* ============ RESPONSIVE ============ */
+@media (max-width: 1024px) {
+    .editor-main {
+        grid-template-columns: 1fr 200px;
+        grid-template-rows: auto 1fr;
+    }
+    .editor-canvas { grid-column: 1 / 2; grid-row: 1 / 3; }
+    .editor-toolbar { grid-column: 2 / 3; grid-row: 1 / 2; }
+    .editor-side-panel { grid-column: 2 / 3; grid-row: 2 / 3; }
+    .filter-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 768px) {
+    .editor-main { grid-template-columns: 1fr; grid-template-rows: auto auto auto; }
+    .editor-canvas { grid-column: 1; grid-row: 1; }
+    .editor-toolbar { grid-column: 1; grid-row: 2; }
+    .editor-side-panel { grid-column: 1; grid-row: 3; }
+}
+
+
+

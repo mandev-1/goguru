@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Camagru — Profile</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <header class="navbar">
+    <div class="nav-brand"><a href="/">📷 Camagru</a></div>
+    <ul class="nav-links">
+      <li><a href="/">Home</a></li>
+      <li><a href="/gallery">Gallery</a></li>
+      <li><a href="/editor">Editor</a></li>
+      <li><a href="/user">Profile</a></li>
+    </ul>
+  </header>
+  <main>
+    <h1>Your Profile</h1>
+    <form id="profileForm">
+      <div class="form-group">
+        <label for="username">Username</label>
+        <input type="text" id="username" name="username" value="demo" />
+      </div>
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" value="demo@example.com" />
+      </div>
+      <div class="form-group">
+        <label><input type="checkbox" id="notify" name="notify" checked /> Notify on new comments</label>
+      </div>
+      <button type="submit">Save Changes</button>
+    </form>
+    <div id="profileMsg" class="error-message"></div>
+    <form id="logoutForm" style="margin-top:16px;">
+      <button type="submit">Logout</button>
+      <div id="logoutMsg" class="error-message"></div>
+    </form>
+  </main>
+</body>
+</html>

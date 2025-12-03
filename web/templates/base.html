@@ -18,8 +18,17 @@
                 <li><a href="/">Home</a></li>
                 <li><a href="/gallery">Gallery</a></li>
                 <li><a href="/editor">Editor</a></li>
+                {{if .LoggedIn}}
+                <li><a href="/user">Hi, {{.Username}}!</a></li>
+                <li>
+                    <form action="/logout" method="post" style="display:inline;">
+                        <button type="submit" style="background:transparent;border:none;color:rgb(174, 194, 224);cursor:pointer;">Logout</button>
+                    </form>
+                </li>
+                {{else}}
                 <li><a href="/login">Login</a></li>
                 <li><a href="/register">Register</a></li>
+                {{end}}
             </ul>
         </nav>
     </header>

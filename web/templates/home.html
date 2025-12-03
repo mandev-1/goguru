@@ -1,32 +1,23 @@
 {{define "title"}}Home{{end}}
 
 {{define "content"}}
-<div class="hero">
-    <h1>Welcome to Camagru</h1>
-    <p class="hero-subtitle">Create amazing photos with your webcam and custom overlays</p>
-    <div class="hero-actions">
-        <a href="/editor" class="btn btn-primary">Start Creating</a>
-        <a href="/gallery" class="btn btn-secondary">View Gallery</a>
-    </div>
-</div>
-
-<div class="features">
-    <div class="feature-card">
-        <div class="feature-icon">📸</div>
-        <h3>Webcam Capture</h3>
-        <p>Take photos directly from your webcam or upload your own images</p>
-    </div>
-    <div class="feature-card">
-        <div class="feature-icon">🎨</div>
-        <h3>Custom Overlays</h3>
-        <p>Add fun frames and stickers to your photos</p>
-    </div>
-    <div class="feature-card">
-        <div class="feature-icon">💬</div>
-        <h3>Share & Interact</h3>
-        <p>Like and comment on photos from the community</p>
-    </div>
-</div>
+<div class="features" style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;">
+    <a class="feature-card" href="/user" style="text-decoration:none;color:inherit;">
+        <div class="feature-icon">👤</div>
+        <h3>Your Profile</h3>
+        <p>Manage account details and preferences</p>
+    </a>
+    <a class="feature-card" href="/gallery" style="text-decoration:none;color:inherit;">
+        <div class="feature-icon">🖼️</div>
+        <h3>Gallery</h3>
+        <p>Browse creations from you and others</p>
+    </a>
+    <a class="feature-card" href="/editor" style="text-decoration:none;color:inherit;">
+        <div class="feature-icon">📷</div>
+        <h3>Editor</h3>
+        <p>Open the editor to create a new picture</p>
+    </a>
+ </div>
 {{end}}
 
 {{template "base" .}}

@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Camagru — Register</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <script src="/static/register.js" defer></script>
+</head>
+<body>
+  <header class="navbar">
+    <div class="nav-brand"><a href="/">📷 Camagru</a></div>
+  </header>
+  <main>
+    <div class="dialog-backdrop"></div>
+    <div class="login-container">
+      <div class="login-header">
+        <h1>Camagru</h1>
+        <p>Create your account</p>
+      </div>
+      <form id="registerForm">
+        <div class="form-group">
+          <label for="username">Username</label>
+          <input type="text" id="username" name="username" placeholder="Choose a username" required />
+          <div class="error-message" id="usernameError"></div>
+        </div>
+        <div class="form-group">
+          <label for="email">Email</label>
+          <input type="email" id="email" name="email" placeholder="Enter your email" required />
+          <div class="error-message" id="emailError"></div>
+        </div>
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" name="password" placeholder="Create a password" minlength="8" required />
+          <div class="error-message" id="passwordError"></div>
+        </div>
+        <div class="form-group">
+          <label for="confirmPassword">Confirm Password</label>
+          <input type="password" id="confirmPassword" name="confirmPassword" placeholder="Repeat your password" minlength="8" required />
+          <div class="error-message" id="confirmPasswordError"></div>
+        </div>
+        <div class="form-login-button"><button type="submit">Create Account</button></div>
+        <div class="form-links">
+          <a href="/login">Already have an account? Log in</a>
+        </div>
+      </form>
+      <p class="footer-text">© 2025 MMAN</p>
+    </div>
+  </main>
+</body>
+</html>

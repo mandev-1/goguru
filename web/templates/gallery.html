@@ -1,0 +1,71 @@
+{{define "title"}}Gallery{{end}}
+
+{{define "content"}}
+<h1>Gallery</h1>
+<div class="gallery-list">
+	{{if .Images}}
+		{{range .Images}}
+			<div class="gallery-item">
+				<img src="{{.Path}}" alt="image {{.ID}}" style="max-width:100%; height:auto;" />
+				<div class="gallery-meta">
+					<span>By {{.Author}}</span>
+					<span>Likes: <strong id="likes-{{.ID}}">{{.LikesCount}}</strong></span>
+				</div>
+				<div class="gallery-actions">
+					<button type="button" class="like-btn" data-id="{{.ID}}">Like</button>
+				</div>
+				<div class="gallery-comment">
+					<form class="comment-form" data-id="{{.ID}}">
+						<input type="text" name="body" placeholder="Add a comment" required />
+						<button type="submit">Comment</button>
+					</form>
+				</div>
+			</div>
+		{{end}}
+	{{else}}
+		<p>No images yet.</p>
+	{{end}}
+</div>
+<div class="pagination">
+	{{if .HasPrev}}
+		<a class="btn" href="/gallery?page={{.PrevPage}}">Prev</a>
+	{{end}}
+	<span>Page {{.Page}} of {{.TotalPages}}</span>
+	{{if .HasNext}}
+		<a class="btn" href="/gallery?page={{.NextPage}}">Next</a>
+	{{end}}
+</div>
+{{end}}
+
+{{define "scripts"}}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+	document.querySelectorAll('.like-btn').forEach(btn => {
+		btn.addEventListener('click', () => {
+			const id = btn.dataset.id;
+			const data = new URLSearchParams();
+			data.set('image_id', id);
+			fetch('/api/gallery/like', { method: 'POST', headers: {'Content-Type':'application/x-www-form-urlencoded'}, body: data.toString() })
+				.then(r => r.text()).then(() => {
+					const el = document.getElementById('likes-' + id);
+					el.textContent = String(Number(el.textContent||'0') + 1);
+				});
+		});
+	});
+	document.querySelectorAll('.comment-form').forEach(f => {
+		f.addEventListener('submit', (e) => {
+			e.preventDefault();
+			const id = f.dataset.id;
+			const body = new FormData(f).get('body');
+			const data = new URLSearchParams();
+			data.set('image_id', id);
+			data.set('body', body);
+			fetch('/api/gallery/comment', { method: 'POST', headers: {'Content-Type':'application/x-www-form-urlencoded'}, body: data.toString() })
+				.then(() => { f.reset(); });
+		});
+	});
+});
+</script>
+{{end}}
+
+{{template "base" .}}
