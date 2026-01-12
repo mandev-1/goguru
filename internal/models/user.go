@@ -1,41 +1,108 @@
 package models
 
+import (
+	"database/sql"
+	"time"
 
+	"golang.org/x/crypto/bcrypt"
+)
 
+type User struct {
+	ID           int
+	Username     string
+	Email        string
+	PasswordHash string
+	Verified     bool
+	VerifyToken  string
+	CreatedAt    time.Time
+}
 
+type UserRepository struct {
+	db *sql.DB
+}
 
+func NewUserRepository(db *sql.DB) *UserRepository {
+	return &UserRepository{db: db}
+}
 
+func (r *UserRepository) Create(username, email, passwordHash, verifyToken string) (int64, error) {
+	res, err := r.db.Exec(
+		`INSERT INTO users (username, email, password_hash, verified, verify_token, created_at)
+		 VALUES (?, ?, ?, 0, ?, ?)`,
+		username, email, passwordHash, verifyToken, time.Now().UTC().Format(time.RFC3339),
+	)
+	if err != nil {
+		return 0, err
+	}
+	return res.LastInsertId()
+}
 
+func (r *UserRepository) FindByUsername(username string) (*User, error) {
+	var u User
+	var verified int
+	err := r.db.QueryRow(
+		"SELECT id, username, email, password_hash, verified, verify_token, created_at FROM users WHERE username = ?",
+		username,
+	).Scan(&u.ID, &u.Username, &u.Email, &u.PasswordHash, &verified, &u.VerifyToken, &u.CreatedAt)
 
+	if err != nil {
+		return nil, err
+	}
+	u.Verified = verified == 1
+	return &u, nil
+}
 
+func (r *UserRepository) FindByEmail(email string) (*User, error) {
+	var u User
+	var verified int
+	err := r.db.QueryRow(
+		"SELECT id, username, email, password_hash, verified, verify_token, created_at FROM users WHERE email = ?",
+		email,
+	).Scan(&u.ID, &u.Username, &u.Email, &u.PasswordHash, &verified, &u.VerifyToken, &u.CreatedAt)
 
+	if err != nil {
+		return nil, err
+	}
+	u.Verified = verified == 1
+	return &u, nil
+}
 
+func (r *UserRepository) FindByID(id int) (*User, error) {
+	var u User
+	var verified int
+	err := r.db.QueryRow(
+		"SELECT id, username, email, password_hash, verified, verify_token, created_at FROM users WHERE id = ?",
+		id,
+	).Scan(&u.ID, &u.Username, &u.Email, &u.PasswordHash, &verified, &u.VerifyToken, &u.CreatedAt)
 
+	if err != nil {
+		return nil, err
+	}
+	u.Verified = verified == 1
+	return &u, nil
+}
 
+func (r *UserRepository) Exists(field, value string) (bool, error) {
+	var count int
+	err := r.db.QueryRow("SELECT COUNT(1) FROM users WHERE "+field+" = ?", value).Scan(&count)
+	return count > 0, err
+}
 
+func (r *UserRepository) Verify(token string) error {
+	_, err := r.db.Exec("UPDATE users SET verified = 1, verify_token = NULL WHERE verify_token = ?", token)
+	return err
+}
 
+func (r *UserRepository) UpdatePassword(userID int, newHash string) error {
+	_, err := r.db.Exec("UPDATE users SET password_hash = ? WHERE id = ?", newHash, userID)
+	return err
+}
 
+func (r *UserRepository) SetVerifyToken(userID int, token string) error {
+	_, err := r.db.Exec("UPDATE users SET verify_token = ? WHERE id = ?", token, userID)
+	return err
+}
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-}	return hex.EncodeToString(b), nil	}		return "", err	if _, err := rand.Read(b); err != nil {	b := make([]byte, n)func RandomToken(n int) (string, error) {}	return nil	}		return errors.New("Passwords do not match")	if password != confirm {	}		return errors.New("Password must be at least 8 characters")	if len(password) < 8 {	}		return errors.New("Invalid email address")	if !emailRe.MatchString(email) {	}		}			return errors.New("Username may contain letters, numbers, underscore")		if !(c == '_' || c >= '0' && c <= '9' || c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z') {	for _, c := range username {	}		return errors.New("Username must be 3-20 characters")	if len(username) < 3 || len(username) > 20 {func ValidateRegistration(username, email, password, confirm string) error {var emailRe = regexp.MustCompile(`^[^\s@]+@[^\s@]+\.[^\s@]+$`))	"regexp"	"errors"	"encoding/hex"	"crypto/rand"import (package models
+func (u *User) CheckPassword(password string) bool {
+	return bcrypt.CompareHashAndPassword([]byte(u.PasswordHash), []byte(password)) == nil
+}

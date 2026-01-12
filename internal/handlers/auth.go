@@ -1,149 +1,215 @@
-package auth
+package handlers
 
 import (
-	"database/sql"
 	"fmt"
-	"camagru/internal/email"
-	"camagru/internal/models"
-	"camagru/internal/utils"
 	"net/http"
 	"strings"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
+
+	"github.com/yourusername/camagru/internal/models"
+	"github.com/yourusername/camagru/internal/services"
+	"github.com/yourusername/camagru/internal/utils"
 )
 
-var db *sql.DB
-
-func SetDB(database *sql.DB) {
-	db = database
+type AuthHandler struct {
+	userRepo    *models.UserRepository
+	sessionRepo *models.SessionRepository
+	emailSvc    *services.EmailService
 }
 
-// ResendVerificationHandler triggers re-sending a verify email for a user.
-func ResendVerificationHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
+func NewAuthHandler(userRepo *models.UserRepository, sessionRepo *models.SessionRepository, emailSvc *services.EmailService) *AuthHandler {
+	return &AuthHandler{
+		userRepo:    userRepo,
+		sessionRepo: sessionRepo,
+		emailSvc:    emailSvc,
 	}
+}
+
+func (h *AuthHandler) LoginPage(w http.ResponseWriter, r *http.Request) {
+	http.ServeFile(w, r, "web/static/pages/login.html")
+}
+
+func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
-		utils.WriteJSON(w, http.StatusBadRequest, map[string]any{"success": false, "message": "Invalid form"})
-		return
-	}
-	identifier := strings.TrimSpace(r.FormValue("username"))
-	if identifier == "" {
-		identifier = strings.TrimSpace(strings.ToLower(r.FormValue("email")))
-	}
-	if identifier == "" {
-		utils.WriteJSON(w, http.StatusBadRequest, map[string]any{"success": false, "message": "Username or email required"})
+		utils.WriteError(w, http.StatusBadRequest, "Invalid form")
 		return
 	}
 
-	var id int
-	var emailAddress string
-	var verified int
-	var token string
-	err := db.QueryRow("SELECT id, email, verified, verify_token FROM users WHERE username = ? OR email = ?", identifier, identifier).Scan(&id, &emailAddress, &verified, &token)
+	username := strings.TrimSpace(r.FormValue("username"))
+	password := r.FormValue("password")
+
+	user, err := h.userRepo.FindByUsername(username)
 	if err != nil {
-		utils.WriteJSON(w, http.StatusNotFound, map[string]any{"success": false, "message": "User not found"})
+		utils.WriteError(w, http.StatusUnauthorized, "Invalid username/password combination")
 		return
 	}
-	if verified == 1 {
-		utils.WriteJSON(w, http.StatusOK, map[string]any{"success": true, "message": "Already verified"})
+
+	if !user.Verified {
+		utils.WriteError(w, http.StatusForbidden, "Not verified yet. Want me to resend verification?")
 		return
 	}
-	if token == "" {
-		// regenerate token if missing
-		token, err = models.RandomToken(32)
-		if err != nil {
-			utils.WriteJSON(w, http.StatusInternalServerError, map[string]any{"success": false, "message": "Server error"})
-			return
-		}
-		if _, err = db.Exec("UPDATE users SET verify_token = ? WHERE id = ?", token, id); err != nil {
-			utils.WriteJSON(w, http.StatusInternalServerError, map[string]any{"success": false, "message": "Server error"})
-			return
-		}
-	}
-	verifyURL := fmt.Sprintf("%s://%s/verify?token=%s", "http", r.Host, token)
-	if err := email.SendVerificationEmail(emailAddress, verifyURL); err != nil {
-		utils.WriteJSON(w, http.StatusInternalServerError, map[string]any{"success": false, "message": "Failed to send email"})
+
+	if !user.CheckPassword(password) {
+		utils.WriteError(w, http.StatusUnauthorized, "Invalid username/password combination")
 		return
 	}
-	utils.WriteJSON(w, http.StatusOK, map[string]any{"success": true, "message": "Verification email resent"})
+
+	token, err := utils.RandomToken(32)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Server error")
+		return
+	}
+
+	if err := h.sessionRepo.Create(token, user.ID); err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Server error")
+		return
+	}
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "session",
+		Value:    token,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   false,
+		SameSite: http.SameSiteLaxMode,
+		Expires:  time.Now().Add(24 * time.Hour),
+	})
+
+	utils.WriteSuccess(w, "Logged in")
 }
 
-func VerifyHandler(w http.ResponseWriter, r *http.Request) {
+func (h *AuthHandler) RegisterPage(w http.ResponseWriter, r *http.Request) {
+	http.ServeFile(w, r, "web/static/pages/register.html")
+}
+
+func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseMultipartForm(2 << 20); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Invalid form")
+		return
+	}
+
+	username := strings.TrimSpace(r.FormValue("username"))
+	email := strings.TrimSpace(strings.ToLower(r.FormValue("email")))
+	password := r.FormValue("password")
+	confirm := r.FormValue("confirmPassword")
+
+	if err := services.ValidateRegistration(username, email, password, confirm); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	if exists, _ := h.userRepo.Exists("username", username); exists {
+		utils.WriteError(w, http.StatusConflict, "Username already taken")
+		return
+	}
+
+	if exists, _ := h.userRepo.Exists("email", email); exists {
+		utils.WriteError(w, http.StatusConflict, "Email already registered")
+		return
+	}
+
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Server error")
+		return
+	}
+
+	token, err := utils.RandomToken(32)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Server error")
+		return
+	}
+
+	if _, err := h.userRepo.Create(username, email, string(hash), token); err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Could not create user")
+		return
+	}
+
+	verifyURL := fmt.Sprintf("%s://%s/verify?token=%s", utils.SchemeFromRequest(r), r.Host, token)
+	_ = h.emailSvc.SendVerificationEmail(email, verifyURL)
+
+	utils.WriteSuccess(w, "Registration successful. Check your email to verify.")
+}
+
+func (h *AuthHandler) Verify(w http.ResponseWriter, r *http.Request) {
 	token := r.URL.Query().Get("token")
 	if token == "" {
 		http.Error(w, "Invalid token", http.StatusBadRequest)
 		return
 	}
-	res, err := db.Exec("UPDATE users SET verified = 1, verify_token = NULL WHERE verify_token = ?", token)
-	if err != nil {
-		http.Error(w, "Server error", http.StatusInternalServerError)
-		return
-	}
-	n, _ := res.RowsAffected()
-	if n == 0 {
+
+	if err := h.userRepo.Verify(token); err != nil {
 		http.Error(w, "Invalid or expired token", http.StatusBadRequest)
 		return
 	}
-	// On success, redirect to login
+
 	http.Redirect(w, r, "/login", http.StatusSeeOther)
 }
 
-func ForgotPasswordHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodGet {
-		http.ServeFile(w, r, "web/static/pages/password.html")
-		return
-	}
-	if r.Method != http.MethodPost {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
-	}
+func (h *AuthHandler) ResendVerification(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
-		utils.WriteJSON(w, http.StatusBadRequest, map[string]any{"success": false, "message": "Invalid form"})
+		utils.WriteError(w, http.StatusBadRequest, "Invalid form")
 		return
 	}
-	emailAddress := strings.TrimSpace(strings.ToLower(r.FormValue("email")))
-	var uid int
-	if err := db.QueryRow("SELECT id FROM users WHERE email = ?", emailAddress).Scan(&uid); err != nil {
-		// don't leak existence
-		utils.WriteJSON(w, http.StatusOK, map[string]any{"success": true, "message": "If the email exists, a reset was sent"})
+
+	identifier := strings.TrimSpace(r.FormValue("username"))
+	if identifier == "" {
+		identifier = strings.TrimSpace(strings.ToLower(r.FormValue("email")))
+	}
+
+	var user *models.User
+	var err error
+
+	if strings.Contains(identifier, "@") {
+		user, err = h.userRepo.FindByEmail(identifier)
+	} else {
+		user, err = h.userRepo.FindByUsername(identifier)
+	}
+
+	if err != nil {
+		utils.WriteError(w, http.StatusNotFound, "User not found")
 		return
 	}
-	tok, _ := models.RandomToken(32)
-	_, _ = db.Exec("INSERT INTO password_resets (user_id, token, created_at) VALUES (?, ?, ?)", uid, tok, time.Now().UTC().Format(time.RFC3339))
-	resetURL := fmt.Sprintf("%s://%s/reset-password?token=%s", utils.SchemeFromRequest(r), r.Host, tok)
-	_ = email.SendVerificationEmail(emailAddress, resetURL) // reuse sender
-	utils.WriteJSON(w, http.StatusOK, map[string]any{"success": true, "message": "Reset email sent"})
+
+	if user.Verified {
+		utils.WriteSuccess(w, "Already verified")
+		return
+	}
+
+	token := user.VerifyToken
+	if token == "" {
+		token, err = utils.RandomToken(32)
+		if err != nil {
+			utils.WriteError(w, http.StatusInternalServerError, "Server error")
+			return
+		}
+		if err := h.userRepo.SetVerifyToken(user.ID, token); err != nil {
+			utils.WriteError(w, http.StatusInternalServerError, "Server error")
+			return
+		}
+	}
+
+	verifyURL := fmt.Sprintf("http://%s/verify?token=%s", r.Host, token)
+	if err := h.emailSvc.SendVerificationEmail(user.Email, verifyURL); err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to send email")
+		return
+	}
+
+	utils.WriteSuccess(w, "Verification email resent")
 }
 
-func ResetPasswordHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodGet {
-		http.ServeFile(w, r, "web/static/pages/password.html")
-		return
+func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
+	if c, err := r.Cookie("session"); err == nil {
+		_ = h.sessionRepo.Delete(c.Value)
+		http.SetCookie(w, &http.Cookie{
+			Name:    "session",
+			Value:   "",
+			Path:    "/",
+			Expires: time.Unix(0, 0),
+			MaxAge:  -1,
+		})
 	}
-	if r.Method != http.MethodPost {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
-	}
-	if err := r.ParseForm(); err != nil {
-		utils.WriteJSON(w, http.StatusBadRequest, map[string]any{"success": false, "message": "Invalid form"})
-		return
-	}
-	token := strings.TrimSpace(r.FormValue("token"))
-	newPass := r.FormValue("password")
-	if len(newPass) < 8 {
-		utils.WriteJSON(w, http.StatusBadRequest, map[string]any{"success": false, "message": "Password must be at least 8 characters"})
-		return
-	}
-	var uid int
-	if err := db.QueryRow("SELECT user_id FROM password_resets WHERE token = ?", token).Scan(&uid); err != nil {
-		utils.WriteJSON(w, http.StatusBadRequest, map[string]any{"success": false, "message": "Invalid token"})
-		return
-	}
-	hash, _ := bcrypt.GenerateFromPassword([]byte(newPass), bcrypt.DefaultCost)
-	_, _ = db.Exec("UPDATE users SET password_hash = ? WHERE id = ?", string(hash), uid)
-	_, _ = db.Exec("DELETE FROM password_resets WHERE token = ?", token)
-	utils.WriteJSON(w, http.StatusOK, map[string]any{"success": true, "message": "Password updated"})
+	utils.WriteSuccess(w, "Logged out")
 }

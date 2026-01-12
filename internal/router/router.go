@@ -1,51 +1,95 @@
 package router
 
 import (
-	"database/sql"
-	"camagru/internal/handlers"
-	"camagru/internal/handlers/auth"
-	"camagru/internal/handlers/image"
-	"camagru/internal/middleware"
 	"net/http"
+
+	"github.com/yourusername/camagru/internal/handlers"
+	"github.com/yourusername/camagru/internal/middleware"
 )
 
-func SetupRoutes(db *sql.DB) {
-	// Pass the database connection to the packages that need it.
-	handlers.SetDB(db)
-	auth.SetDB(db)
-	image.SetDB(db)
-	middleware.SetDB(db)
+type Router struct {
+	authHandler    *handlers.AuthHandler
+	galleryHandler *handlers.GalleryHandler
+	editorHandler  *handlers.EditorHandler
+	userHandler    *handlers.UserHandler
+	authMiddleware *middleware.AuthMiddleware
+}
 
-	// Serve static files (CSS, JS, images)
+func New(
+	authHandler *handlers.AuthHandler,
+	galleryHandler *handlers.GalleryHandler,
+	editorHandler *handlers.EditorHandler,
+	userHandler *handlers.UserHandler,
+	authMiddleware *middleware.AuthMiddleware,
+) *Router {
+	return &Router{
+		authHandler:    authHandler,
+		galleryHandler: galleryHandler,
+		editorHandler:  editorHandler,
+		userHandler:    userHandler,
+		authMiddleware: authMiddleware,
+	}
+}
+
+func (rt *Router) Setup() http.Handler {
+	mux := http.NewServeMux()
+
+	// Static files
 	fs := http.FileServer(http.Dir("web/static"))
-	http.Handle("/static/", http.StripPrefix("/static/", fs))
+	mux.Handle("/static/", http.StripPrefix("/static/", fs))
 
-	// Static pages
-	http.HandleFunc("/", handlers.HomeHandler)
+	// Public pages
+	mux.HandleFunc("/", homeHandler)
+	mux.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			rt.authHandler.LoginPage(w, r)
+		} else if r.Method == http.MethodPost {
+			rt.authHandler.Login(w, r)
+		} else {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+		}
+	})
+	mux.HandleFunc("/register", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			rt.authHandler.RegisterPage(w, r)
+		} else if r.Method == http.MethodPost {
+			rt.authHandler.Register(w, r)
+		} else {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+		}
+	})
+	mux.HandleFunc("/verify", rt.authHandler.Verify)
+	mux.HandleFunc("/resend-verification", rt.authHandler.ResendVerification)
+	mux.HandleFunc("/forgot-password", rt.userHandler.ForgotPasswordPage)
+	mux.HandleFunc("/reset-password", rt.userHandler.ResetPasswordPage)
 
-	// Auth
-	http.HandleFunc("/login", handlers.LoginHandler)
-	http.HandleFunc("/register", handlers.RegisterHandler)
-	http.HandleFunc("/logout", middleware.AuthRequired(handlers.LogoutHandler))
+	// Protected pages
+	mux.HandleFunc("/gallery", rt.authMiddleware.RequireAuth(rt.galleryHandler.GalleryPage))
+	mux.HandleFunc("/editor", rt.authMiddleware.RequireAuth(rt.editorHandler.EditorPage))
+	mux.HandleFunc("/user", rt.authMiddleware.RequireAuth(rt.userHandler.UserPage))
+	mux.HandleFunc("/logout", rt.authMiddleware.RequireAuth(rt.authHandler.Logout))
 
-	// Authenticated pages
-	http.HandleFunc("/gallery", middleware.AuthRequired(handlers.GalleryHandler))
-	http.HandleFunc("/editor", middleware.AuthRequired(handlers.EditorHandler))
-	http.HandleFunc("/user", middleware.AuthRequired(handlers.UserHandler))
+	// Gallery API (some public, some protected)
+	mux.HandleFunc("/api/gallery", rt.galleryHandler.List)
+	mux.HandleFunc("/api/gallery/like", rt.authMiddleware.RequireAuth(rt.galleryHandler.Like))
+	mux.HandleFunc("/api/gallery/comment", rt.authMiddleware.RequireAuth(rt.galleryHandler.Comment))
+	mux.HandleFunc("/api/gallery/mock-upload", rt.authMiddleware.RequireAuth(rt.galleryHandler.MockUpload))
 
-	// API
-	http.HandleFunc("/api/current-user", middleware.AuthRequired(handlers.CurrentUserAPIHandler))
+	// Editor API (protected)
+	mux.HandleFunc("/api/assets", rt.authMiddleware.RequireAuth(rt.editorHandler.ListAssets))
+	mux.HandleFunc("/api/assets/upload", rt.authMiddleware.RequireAuth(rt.editorHandler.UploadAsset))
+	mux.HandleFunc("/api/compose", rt.authMiddleware.RequireAuth(rt.editorHandler.Compose))
 
-	// Auth APIs
-	http.HandleFunc("/resend-verification", auth.ResendVerificationHandler)
-	http.HandleFunc("/verify", auth.VerifyHandler)
-	http.HandleFunc("/forgot-password", auth.ForgotPasswordHandler)
-	http.HandleFunc("/reset-password", auth.ResetPasswordHandler)
+	// User API (protected)
+	mux.HandleFunc("/api/current-user", rt.authMiddleware.RequireAuth(rt.userHandler.CurrentUser))
 
-	// Image APIs
-	http.HandleFunc("/api/assets", middleware.AuthRequired(image.AssetsHandler))
-	http.HandleFunc("/api/assets/upload", middleware.AuthRequired(image.UploadAssetHandler))
-	http.HandleFunc("/api/compose", middleware.AuthRequired(image.ComposeHandler))
-	http.HandleFunc("/api/gallery/like", middleware.AuthRequired(image.LikeImageHandler))
-	http.HandleFunc("/api/gallery/comment", middleware.AuthRequired(image.CommentImageHandler))
+	return mux
+}
+
+func homeHandler(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/" {
+		http.NotFound(w, r)
+		return
+	}
+	http.ServeFile(w, r, "web/static/pages/home.html")
 }

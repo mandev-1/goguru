@@ -134,3 +134,42 @@ should note that this is much easier than it looks.
 • Do an infinite pagination of the gallery part of the site.
 • Offer the possibility to a user to share his images on social networks.
 • Render an animated GIF.
+
+
+
+PLAN:
+1. CREATE APP SHELL:
+- SERVER
+- ROUTER
+- ROUTER BASICS
+- LOGIN BASICS
+    * LOGIN PAGE
+    * PWD-R PAGE
+    * CREATE ACC PAGE
+
+- OTHER PAGES (EMPTY)
+    * HOME
+    * TAKE PICTURE PAGE
+    * CHANGE PASSWORD PAGE
+    * LOOK AT OTHER PEOPLES STUFF PAGE
+
+2. LOGIC FEATURES THINGS
+- USER
+    * CREATE (SIGN UP) AND AUTHENTICATE AND LOGIN
+    * PWD RESSET
+- USER 2
+    * DISCONNECT (LOG OUT)
+    * WHEN CONNECTED -> MODIFY USERNAME, MAIL OR PWD
+
+- GALLERY
+    * DISPLAY USER IMAGES 
+    * ALLOW CONNECTED USER TO LIKE / COMMENT ON IMAGE
+- GALLERY 2 
+-->(DISPLAY USER IMAGES IS PUBLIC)
+
+- EDITING 
+    * PUT PICTURE (BLANK) TO PUBLIC GALLERY
+    * NOTIFY USER WHEN THEY IMAGE IS COMMENTED ON
+
+- EDITING 2
+    * ACTUAL IMAGE EDITING (SUPERIMPOSING)
