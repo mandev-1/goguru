@@ -227,10 +227,11 @@ func (s *Server) HandleCompose(w http.ResponseWriter, r *http.Request) {
 	uploadDir := "./data/uploads"
 	os.MkdirAll(uploadDir, 0755)
 
-	filename := fmt.Sprintf("%d_%s_%d.jpg", user.ID, user.Username, time.Now().Unix())
-	filepath := filepath.Join(uploadDir, filename)
+	// Generate a new filename for the saved image (overwrite the uploaded filename)
+	filename = fmt.Sprintf("%d_%s_%d.jpg", user.ID, user.Username, time.Now().Unix())
+	filePath := filepath.Join(uploadDir, filename)
 
-	outFile, err := os.Create(filepath)
+	outFile, err := os.Create(filePath)
 	if err != nil {
 		s.SendJSON(w, http.StatusInternalServerError, models.APIResponse{
 			Success: false,
@@ -258,7 +259,7 @@ func (s *Server) HandleCompose(w http.ResponseWriter, r *http.Request) {
 	`, user.ID, imagePath)
 
 	if err != nil {
-		os.Remove(filepath)
+		os.Remove(filePath)
 		s.SendJSON(w, http.StatusInternalServerError, models.APIResponse{
 			Success: false,
 			Message: "Failed to save image record",
