@@ -89,7 +89,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     if (errorDiv) {
       errorDiv.textContent = message;
-      errorDiv.style.display = 'block';
+      errorDiv.classList.add('show');
     }
     
     field.style.borderColor = 'var(--danger, #dc3545)';
@@ -103,7 +103,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     if (errorDiv) {
       errorDiv.textContent = '';
-      errorDiv.style.display = 'none';
+      errorDiv.classList.remove('show');
     }
     
     field.style.borderColor = '';

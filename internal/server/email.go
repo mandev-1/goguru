@@ -33,7 +33,7 @@ Hello %s,
 You requested to reset your password. Click the following link to reset it:
 %s
 
-This link will expire in 1 hour.
+This link will expire in 30 minutes.
 
 If you did not request this, please ignore this email.
 
