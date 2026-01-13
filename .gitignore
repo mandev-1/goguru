@@ -1,0 +1,42 @@
+# Database
+*.db
+*.db-shm
+*.db-wal
+
+# Go
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+go.work
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Uploads - exclude all uploaded images
+data/uploads/*
+!data/uploads/.gitkeep
+
+# Database
+data/*.db
+data/*.db-shm
+data/*.db-wal
+
+# Environment variables
+.env
+
+# Build
+camagru
+dist/
+

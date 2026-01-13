@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Camagru — Gallery</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <link rel="icon" href="/static/favicon.ico" type="image/x-icon">
+</head>
+<body>
+  <header class="navbar">
+    <div class="nav-brand"><a href="/">📷 Camagru</a></div>
+    <ul class="nav-links">
+      <li><a href="/">Home</a></li>
+      <li><a href="/gallery">Gallery</a></li>
+      <li><a href="/editor">Editor</a></li>
+      <li><a href="/user">Profile</a></li>
+      <li><span id="user-display" style="color: white; margin-left: 15px;"></span></li>
+    </ul>
+  </header>
+  <main>
+    <section class="page-heading">
+      <div>
+        <p class="eyebrow">Latest creations</p>
+        <h1>Gallery</h1>
+        <p class="subtext">See what the community is capturing and layering.</p>
+      </div>
+      <div class="page-actions">
+        <button type="button" id="mock-upload-btn" class="ghost-btn">Upload / Create</button>
+      </div>
+    </section>
+
+    <div id="gallery-status" class="gallery-status hidden">Loading...</div>
+    <div id="gallery-empty" class="gallery-empty hidden">
+      <p>No images yet. Be the first to create one!</p>
+      <a class="ghost-btn" href="/editor">Go to Editor</a>
+    </div>
+
+    <div id="gallery-grid" class="gallery-grid" aria-live="polite"></div>
+
+    <div class="pagination-container">
+      <div class="pagination" id="pagination"></div>
+    </div>
+
+    <template id="gallery-card-template">
+      <article class="gallery-card">
+        <div class="gallery-card-media">
+          <img class="gallery-card-img" src="" alt="Gallery item" loading="lazy" />
+        </div>
+        <div class="gallery-card-body">
+          <div class="gallery-card-meta">
+            <span class="gallery-card-author"></span>
+            <span class="gallery-card-date"></span>
+          </div>
+          <div class="gallery-card-actions">
+            <button type="button" class="like-btn" aria-label="Like image">
+              <span>❤️</span>
+              <span class="like-count">0</span>
+            </button>
+          </div>
+          <div class="gallery-card-comments">
+            <ul class="comment-list"></ul>
+            <form class="comment-form">
+              <input type="text" class="comment-input" name="comment" placeholder="Add a comment" maxlength="280" />
+              <button type="submit" class="comment-submit">Send</button>
+            </form>
+          </div>
+        </div>
+      </article>
+    </template>
+    <div class="pagination">
+      
+    </div>
+  </main>
+  <script src="/static/header.js"></script>
+  <script src="/static/gallery.js"></script>
+</body>
+</html>

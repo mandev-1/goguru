@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Camagru</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <link rel="icon" href="/static/favicon.ico" type="image/x-icon">
+</head>
+<body>
+  <header class="navbar">
+    <div class="nav-brand"><a href="/">📷 Camagru</a></div>
+    <ul class="nav-links">
+      <li><a href="/">Home</a></li>
+      <li><a href="/gallery">Gallery</a></li>
+      <li><a href="/editor">Editor</a></li>
+      <li><a href="/user">Profile</a></li>
+      <li id="user-display" style="color: white; margin-left: 15px;"></li>
+    </ul>
+  </header>
+  <main>
+    <div class="features" style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;">
+
+      <a class="feature-card" href="/gallery" style="text-decoration:none;color:inherit;">
+        <div class="feature-icon">🖼️</div>
+        <h3>Gallery</h3>
+        <p>Browse creations from you and others</p>
+      </a>
+
+      <a class="feature-card" href="/editor" style="text-decoration:none;color:inherit;">
+        <div class="feature-icon">📷</div>
+        <h3>Editor</h3>
+        <p>Open the editor to create a new picture</p>
+      </a>
+
+      <a class="feature-card" href="/user" style="text-decoration:none;color:inherit;">
+        <div class="feature-icon">👤</div>
+        <h3>Your Profile</h3>
+        <p>Manage account details and preferences</p>
+      </a>
+      
+    </div>
+    <p class="subtext-home">The best place to share your pictures.</p>
+  </main>
+  <script src="/static/header.js"></script>
+  <footer><p>© 2025 MMAN</p></footer>
+</body>
+</html>
