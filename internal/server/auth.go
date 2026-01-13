@@ -362,8 +362,8 @@ func (s *Server) HandleForgotPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Set expiration (1 hour)
-	expires := time.Now().Add(1 * time.Hour)
+	// Set expiration (30 minutes)
+	expires := time.Now().Add(30 * time.Minute)
 	_, err = s.DB.Exec(`
 		UPDATE users
 		SET reset_token = ?, reset_expires = ?

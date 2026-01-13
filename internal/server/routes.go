@@ -22,6 +22,7 @@ func (s *Server) SetupRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/editor", s.RequireAuth(s.HandleEditorPage))
 	mux.HandleFunc("/user", s.RequireAuth(s.HandleUserPage))
 	mux.HandleFunc("/password", s.HandlePasswordPage)
+	mux.HandleFunc("/forgot-password", s.HandleForgotPasswordPage)
 	mux.HandleFunc("/unauthorized", s.HandleUnauthorizedPage)
 
 	// API endpoints
@@ -39,7 +40,6 @@ func (s *Server) SetupRoutes(mux *http.ServeMux) {
 	// Auth endpoints (POST only)
 	mux.HandleFunc("/logout", s.HandleLogout)
 	mux.HandleFunc("/verify", s.HandleVerify)
-	mux.HandleFunc("/forgot-password", s.HandleForgotPassword)
 	mux.HandleFunc("/reset-password", s.HandleResetPassword)
 	mux.HandleFunc("/resend-verification", s.HandleResendVerification)
 }
