@@ -2,44 +2,49 @@ package config
 
 import (
 	"bufio"
+	"fmt"
 	"os"
 	"strings"
 )
 
-// LoadEnv loads environment variables from .env file
+const defaultEnvContent = `PORT=8080
+SMTP_HOST=mailhog
+SMTP_PORT=1025
+SMTP_USER=
+SMTP_PASS=
+FROM_EMAIL=noreply@camagru.local
+`
+
 func LoadEnv(filename string) error {
+	_, err := os.Stat(filename)
+	if os.IsNotExist(err) {
+		if err := os.WriteFile(filename, []byte(defaultEnvContent), 0644); err != nil {
+			return err
+		}
+		fmt.Printf("Created %s with default values\n", filename)
+	}
 	file, err := os.Open(filename)
 	if err != nil {
-		// .env file is optional, return nil if it doesn't exist
-		return nil
+		return err
 	}
 	defer file.Close()
-
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
-		
-		// Skip empty lines and comments
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue
 		}
-		
-		// Parse KEY=VALUE
 		parts := strings.SplitN(line, "=", 2)
 		if len(parts) == 2 {
 			key := strings.TrimSpace(parts[0])
 			value := strings.TrimSpace(parts[1])
-			// Remove quotes if present
 			if len(value) >= 2 && ((value[0] == '"' && value[len(value)-1] == '"') || (value[0] == '\'' && value[len(value)-1] == '\'')) {
 				value = value[1 : len(value)-1]
 			}
-			// Only set if not already set (environment variables take precedence)
 			if os.Getenv(key) == "" {
 				os.Setenv(key, value)
 			}
 		}
 	}
-	
 	return scanner.Err()
 }
-

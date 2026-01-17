@@ -3,7 +3,6 @@ package server
 import (
 	"camagru/internal/auth"
 	"camagru/internal/models"
-	"database/sql"
 	"fmt"
 	"net/http"
 	"regexp"
@@ -27,27 +26,11 @@ func (s *Server) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var user models.User
-	err := s.DB.QueryRow(`
-		SELECT id, username, email, password_hash, verified
-		FROM users
-		WHERE username = ? OR email = ?
-	`, username, username).Scan(
-		&user.ID, &user.Username, &user.Email, &user.PasswordHash, &user.Verified,
-	)
-
-	if err == sql.ErrNoRows {
+	user, err := s.DB.GetUserByUsernameOrEmail(username)
+	if err != nil {
 		s.SendJSON(w, http.StatusUnauthorized, models.APIResponse{
 			Success: false,
 			Message: "Invalid username/password combination, sorry! (🇨🇦)",
-		})
-		return
-	}
-
-	if err != nil {
-		s.SendJSON(w, http.StatusInternalServerError, models.APIResponse{
-			Success: false,
-			Message: "Internal server error",
 		})
 		return
 	}
@@ -67,8 +50,6 @@ func (s *Server) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-
-	// Create session token
 	sessionToken, err := auth.GenerateToken()
 	if err != nil {
 		s.SendJSON(w, http.StatusInternalServerError, models.APIResponse{
@@ -78,23 +59,20 @@ func (s *Server) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = s.DB.Exec("UPDATE users SET session_token = ? WHERE id = ?", sessionToken, user.ID)
-	if err != nil {
+	if err := s.DB.UpdateUserSessionToken(user.ID, sessionToken); err != nil {
 		s.SendJSON(w, http.StatusInternalServerError, models.APIResponse{
 			Success: false,
 			Message: "Failed to create session",
 		})
 		return
 	}
-
-	// Set cookie
 	http.SetCookie(w, &http.Cookie{
 		Name:     "session",
 		Value:    sessionToken,
 		Path:     "/",
 		HttpOnly: true,
 		SameSite: http.SameSiteStrictMode,
-		MaxAge:   86400 * 7, // 7 days
+		MaxAge:   86400 * 7,
 	})
 
 	s.SendJSON(w, http.StatusOK, models.APIResponse{
@@ -112,8 +90,6 @@ func (s *Server) HandleRegister(w http.ResponseWriter, r *http.Request) {
 	email := strings.TrimSpace(r.FormValue("email"))
 	password := r.FormValue("password")
 	confirmPassword := r.FormValue("confirmPassword")
-
-	// Validation - Username
 	if username == "" {
 		s.SendJSON(w, http.StatusBadRequest, models.APIResponse{
 			Success: false,
@@ -137,8 +113,6 @@ func (s *Server) HandleRegister(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-
-	// Username can only contain letters, numbers, and underscores
 	usernameRegex := `^[a-zA-Z0-9_]+$`
 	matched, _ := regexp.MatchString(usernameRegex, username)
 	if !matched {
@@ -148,8 +122,6 @@ func (s *Server) HandleRegister(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-
-	// Validation - Email
 	if email == "" {
 		s.SendJSON(w, http.StatusBadRequest, models.APIResponse{
 			Success: false,
@@ -165,8 +137,6 @@ func (s *Server) HandleRegister(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-
-	// Validation - Password
 	if password == "" {
 		s.SendJSON(w, http.StatusBadRequest, models.APIResponse{
 			Success: false,
@@ -190,8 +160,6 @@ func (s *Server) HandleRegister(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-
-	// Validation - Confirm Password
 	if confirmPassword == "" {
 		s.SendJSON(w, http.StatusBadRequest, models.APIResponse{
 			Success: false,
@@ -207,11 +175,16 @@ func (s *Server) HandleRegister(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
+	usernameExists, emailExists, err := s.DB.UserExists(username, email)
+	if err != nil {
+		s.SendJSON(w, http.StatusInternalServerError, models.APIResponse{
+			Success: false,
+			Message: "Internal server error",
+		})
+		return
+	}
 
-	// Check if username exists
-	var exists int
-	s.DB.QueryRow("SELECT COUNT(*) FROM users WHERE username = ?", username).Scan(&exists)
-	if exists > 0 {
+	if usernameExists {
 		s.SendJSON(w, http.StatusBadRequest, models.APIResponse{
 			Success: false,
 			Message: "Username already taken",
@@ -219,17 +192,13 @@ func (s *Server) HandleRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check if email exists
-	s.DB.QueryRow("SELECT COUNT(*) FROM users WHERE email = ?", email).Scan(&exists)
-	if exists > 0 {
+	if emailExists {
 		s.SendJSON(w, http.StatusBadRequest, models.APIResponse{
 			Success: false,
 			Message: "Email already registered",
 		})
 		return
 	}
-
-	// Hash password
 	passwordHash, err := auth.HashPassword(password)
 	if err != nil {
 		s.SendJSON(w, http.StatusInternalServerError, models.APIResponse{
@@ -238,8 +207,6 @@ func (s *Server) HandleRegister(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-
-	// Generate verification token
 	verificationToken, err := auth.GenerateToken()
 	if err != nil {
 		s.SendJSON(w, http.StatusInternalServerError, models.APIResponse{
@@ -248,13 +215,7 @@ func (s *Server) HandleRegister(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-
-	// Insert user
-	_, err = s.DB.Exec(`
-		INSERT INTO users (username, email, password_hash, verification_token)
-		VALUES (?, ?, ?, ?)
-	`, username, email, passwordHash, verificationToken)
-
+	_, err = s.DB.CreateUser(username, email, passwordHash, verificationToken)
 	if err != nil {
 		s.SendJSON(w, http.StatusInternalServerError, models.APIResponse{
 			Success: false,
@@ -262,8 +223,6 @@ func (s *Server) HandleRegister(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-
-	// Send verification email
 	verificationURL := fmt.Sprintf("http://localhost:8080/verify?token=%s", verificationToken)
 	go s.SendVerificationEmail(email, username, verificationURL)
 
@@ -276,7 +235,7 @@ func (s *Server) HandleRegister(w http.ResponseWriter, r *http.Request) {
 func (s *Server) HandleLogout(w http.ResponseWriter, r *http.Request) {
 	cookie, err := r.Cookie("session")
 	if err == nil {
-		s.DB.Exec("UPDATE users SET session_token = NULL WHERE session_token = ?", cookie.Value)
+		s.DB.ClearUserSessionToken(cookie.Value)
 	}
 
 	http.SetCookie(w, &http.Cookie{
@@ -297,16 +256,9 @@ func (s *Server) HandleVerify(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var userID int
-	err := s.DB.QueryRow("SELECT id FROM users WHERE verification_token = ?", token).Scan(&userID)
-	if err == sql.ErrNoRows {
-		http.Error(w, "Invalid verification token", http.StatusBadRequest)
-		return
-	}
-
-	_, err = s.DB.Exec("UPDATE users SET verified = 1, verification_token = NULL WHERE id = ?", userID)
+	err := s.DB.VerifyUser(token)
 	if err != nil {
-		http.Error(w, "Failed to verify account", http.StatusInternalServerError)
+		http.Error(w, "Invalid verification token", http.StatusBadRequest)
 		return
 	}
 
@@ -318,7 +270,6 @@ func (s *Server) HandleForgotPasswordPage(w http.ResponseWriter, r *http.Request
 		http.ServeFile(w, r, "./web/static/pages/forgot-password.html")
 		return
 	}
-	// POST requests handled by HandleForgotPassword
 	if r.Method == "POST" {
 		s.HandleForgotPassword(w, r)
 		return
@@ -340,19 +291,15 @@ func (s *Server) HandleForgotPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var userID int
-	var username string
-	err := s.DB.QueryRow("SELECT id, username FROM users WHERE email = ?", email).Scan(&userID, &username)
-	if err == sql.ErrNoRows {
-		// Don't reveal if email exists
+	user, err := s.DB.GetUserByUsernameOrEmail(email)
+	if err != nil {
 		s.SendJSON(w, http.StatusOK, models.APIResponse{
 			Success: true,
 			Message: "If the email exists, a password reset link has been sent.",
 		})
 		return
 	}
-
-	// Generate reset token
+	username := user.Username
 	resetToken, err := auth.GenerateToken()
 	if err != nil {
 		s.SendJSON(w, http.StatusInternalServerError, models.APIResponse{
@@ -361,14 +308,8 @@ func (s *Server) HandleForgotPassword(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-
-	// Set expiration (30 minutes)
 	expires := time.Now().Add(30 * time.Minute)
-	_, err = s.DB.Exec(`
-		UPDATE users
-		SET reset_token = ?, reset_expires = ?
-		WHERE id = ?
-	`, resetToken, expires, userID)
+	err = s.DB.SetPasswordResetToken(email, resetToken, expires)
 
 	if err != nil {
 		s.SendJSON(w, http.StatusInternalServerError, models.APIResponse{
@@ -377,8 +318,6 @@ func (s *Server) HandleForgotPassword(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-
-	// Send reset email
 	resetURL := fmt.Sprintf("http://localhost:8080/password?token=%s", resetToken)
 	go s.SendPasswordResetEmail(email, username, resetURL)
 
@@ -420,25 +359,15 @@ func (s *Server) HandleResetPassword(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-
-	// Verify token
-	var userID int
-	var expires time.Time
-	err := s.DB.QueryRow(`
-		SELECT id, reset_expires
-		FROM users
-		WHERE reset_token = ?
-	`, token).Scan(&userID, &expires)
-
-	if err == sql.ErrNoRows || time.Now().After(expires) {
+	user, err := s.DB.GetUserByResetToken(token)
+	if err != nil {
 		s.SendJSON(w, http.StatusBadRequest, models.APIResponse{
 			Success: false,
 			Message: "Invalid or expired reset token",
 		})
 		return
 	}
-
-	// Hash new password
+	userID := user.ID
 	passwordHash, err := auth.HashPassword(password)
 	if err != nil {
 		s.SendJSON(w, http.StatusInternalServerError, models.APIResponse{
@@ -447,13 +376,7 @@ func (s *Server) HandleResetPassword(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-
-	// Update password and clear reset token
-	_, err = s.DB.Exec(`
-		UPDATE users
-		SET password_hash = ?, reset_token = NULL, reset_expires = NULL
-		WHERE id = ?
-	`, passwordHash, userID)
+	err = s.DB.UpdateUserPassword(userID, passwordHash)
 
 	if err != nil {
 		s.SendJSON(w, http.StatusInternalServerError, models.APIResponse{
@@ -476,15 +399,8 @@ func (s *Server) HandleResendVerification(w http.ResponseWriter, r *http.Request
 
 	username := strings.TrimSpace(r.FormValue("username"))
 
-	var userID int
-	var email, usernameVal, token string
-	err := s.DB.QueryRow(`
-		SELECT id, email, username, verification_token
-		FROM users
-		WHERE username = ? OR email = ?
-	`, username, username).Scan(&userID, &email, &usernameVal, &token)
-
-	if err == sql.ErrNoRows {
+	user, err := s.DB.GetUserByUsernameOrEmail(username)
+	if err != nil {
 		s.SendJSON(w, http.StatusOK, models.APIResponse{
 			Success: true,
 			Message: "If the account exists, a verification email has been sent.",
@@ -492,13 +408,17 @@ func (s *Server) HandleResendVerification(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	if token == "" {
+	if user.VerificationToken == "" {
 		s.SendJSON(w, http.StatusBadRequest, models.APIResponse{
 			Success: false,
 			Message: "Account already verified",
 		})
 		return
 	}
+
+	email := user.Email
+	usernameVal := user.Username
+	token := user.VerificationToken
 
 	verificationURL := fmt.Sprintf("http://localhost:8080/verify?token=%s", token)
 	go s.SendVerificationEmail(email, usernameVal, verificationURL)
@@ -508,4 +428,3 @@ func (s *Server) HandleResendVerification(w http.ResponseWriter, r *http.Request
 		Message: "Verification email sent. Please check your inbox.",
 	})
 }
-

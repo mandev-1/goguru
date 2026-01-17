@@ -1,15 +1,15 @@
 package server
 
 import (
+	"camagru/internal/database"
 	"camagru/internal/models"
-	"database/sql"
 	"encoding/json"
 	"net/http"
 	"strings"
 )
 
 type Server struct {
-	DB *sql.DB
+	DB *database.Storage
 }
 
 func (s *Server) SendJSON(w http.ResponseWriter, status int, resp models.APIResponse) {
@@ -24,20 +24,12 @@ func (s *Server) GetCurrentUser(r *http.Request) (*models.User, error) {
 		return nil, err
 	}
 
-	var user models.User
-	err = s.DB.QueryRow(`
-		SELECT id, username, email, verified, comment_notifications, created_at
-		FROM users
-		WHERE session_token = ?
-	`, cookie.Value).Scan(
-		&user.ID, &user.Username, &user.Email, &user.Verified,
-		&user.CommentNotifications, &user.CreatedAt,
-	)
+	user, err := s.DB.GetUserBySessionToken(cookie.Value)
 	if err != nil {
 		return nil, err
 	}
 
-	return &user, nil
+	return user, nil
 }
 
 func (s *Server) RequireAuth(next http.HandlerFunc) http.HandlerFunc {
@@ -61,4 +53,3 @@ func (s *Server) RequireAuth(next http.HandlerFunc) http.HandlerFunc {
 		next(w, r)
 	}
 }
-

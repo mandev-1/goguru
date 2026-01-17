@@ -2,7 +2,6 @@ package server
 
 import (
 	"camagru/internal/models"
-	"database/sql"
 	"fmt"
 	"image"
 	"image/color"
@@ -30,9 +29,7 @@ func (s *Server) HandleCompose(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-
-	// Parse multipart form
-	err = r.ParseMultipartForm(10 << 20) // 10MB
+	err = r.ParseMultipartForm(10 << 20)
 	if err != nil {
 		s.SendJSON(w, http.StatusBadRequest, models.APIResponse{
 			Success: false,
@@ -40,8 +37,6 @@ func (s *Server) HandleCompose(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-
-	// Get uploaded image
 	file, fileHeader, err := r.FormFile("image")
 	if err != nil {
 		s.SendJSON(w, http.StatusBadRequest, models.APIResponse{
@@ -51,8 +46,6 @@ func (s *Server) HandleCompose(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer file.Close()
-
-	// Validate filename (only allow safe characters: alphanumeric, underscore, hyphen, dot)
 	filename := fileHeader.Filename
 	if filename != "" {
 		validFilename := true
@@ -73,9 +66,6 @@ func (s *Server) HandleCompose(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-
-	// Validate MIME type (if provided)
-	// Note: We also validate by attempting to decode the image, so MIME type is secondary
 	contentType := fileHeader.Header.Get("Content-Type")
 	if contentType != "" {
 		validMIMETypes := []string{"image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp"}
@@ -94,8 +84,6 @@ func (s *Server) HandleCompose(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-
-	// Get asset ID
 	assetIDStr := r.FormValue("asset_id")
 	assetID, err := strconv.Atoi(assetIDStr)
 	if err != nil || assetID == 0 {
@@ -105,8 +93,6 @@ func (s *Server) HandleCompose(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-
-	// Get overlay position and size (optional, defaults to center)
 	overlayX := 0
 	overlayY := 0
 	overlayW := 0
@@ -123,19 +109,15 @@ func (s *Server) HandleCompose(w http.ResponseWriter, r *http.Request) {
 	if hStr := r.FormValue("overlay_h"); hStr != "" {
 		overlayH, _ = strconv.Atoi(hStr)
 	}
-
-	// Get asset path
-	var assetPath string
-	err = s.DB.QueryRow("SELECT path FROM assets WHERE id = ?", assetID).Scan(&assetPath)
-	if err == sql.ErrNoRows {
+	asset, err := s.DB.GetAssetByID(assetID)
+	if err != nil {
 		s.SendJSON(w, http.StatusBadRequest, models.APIResponse{
 			Success: false,
 			Message: "Asset not found",
 		})
 		return
 	}
-
-	// Decode base image
+	assetPath := asset.Path
 	baseImg, _, err := image.Decode(file)
 	if err != nil {
 		s.SendJSON(w, http.StatusBadRequest, models.APIResponse{
@@ -144,13 +126,9 @@ func (s *Server) HandleCompose(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-
-	// Load overlay image
-	// Asset path is like "/static/assets/cat.png", need to convert to "./web/static/assets/cat.png"
 	overlayPath := "./web" + assetPath
 	overlayFile, err := os.Open(overlayPath)
 	if err != nil {
-		// Try alternative path (without /web prefix)
 		altPath := "." + assetPath
 		overlayFile, err = os.Open(altPath)
 		if err != nil {
@@ -171,25 +149,17 @@ func (s *Server) HandleCompose(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-
-	// Create RGBA canvas
 	bounds := baseImg.Bounds()
 	canvas := image.NewRGBA(bounds)
 	draw.Draw(canvas, bounds, baseImg, image.Point{}, draw.Src)
-
-	// Draw overlay with alpha blending
 	overlayBounds := overlayImg.Bounds()
-	
-	// Use provided position/size if available, otherwise center and scale
 	var finalX, finalY, finalW, finalH int
 	if overlayW > 0 && overlayH > 0 {
-		// Use provided position and size
 		finalX = overlayX
 		finalY = overlayY
 		finalW = overlayW
 		finalH = overlayH
 	} else {
-		// Default: center and make overlay half the size
 		overlaySize := bounds.Dx()
 		if overlaySize > bounds.Dy() {
 			overlaySize = bounds.Dy()
@@ -200,8 +170,6 @@ func (s *Server) HandleCompose(w http.ResponseWriter, r *http.Request) {
 		finalW = overlaySize
 		finalH = overlaySize
 	}
-
-	// Ensure overlay fits within bounds
 	if finalX < 0 {
 		finalX = 0
 	}
@@ -214,20 +182,14 @@ func (s *Server) HandleCompose(w http.ResponseWriter, r *http.Request) {
 	if finalY+finalH > bounds.Dy() {
 		finalH = bounds.Dy() - finalY
 	}
-
-	// Resize overlay to match desired size and draw
 	if overlayBounds.Dx() != finalW || overlayBounds.Dy() != finalH {
 		resizedOverlay := resizeImage(overlayImg, finalW, finalH)
 		drawOverlay(canvas, resizedOverlay, finalX, finalY)
 	} else {
 		drawOverlay(canvas, overlayImg, finalX, finalY)
 	}
-
-	// Save composed image
 	uploadDir := "./data/uploads"
 	os.MkdirAll(uploadDir, 0755)
-
-	// Generate a new filename for the saved image (overwrite the uploaded filename)
 	filename = fmt.Sprintf("%d_%s_%d.jpg", user.ID, user.Username, time.Now().Unix())
 	filePath := filepath.Join(uploadDir, filename)
 
@@ -240,8 +202,6 @@ func (s *Server) HandleCompose(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer outFile.Close()
-
-	// Encode as JPEG
 	err = jpeg.Encode(outFile, canvas, &jpeg.Options{Quality: 90})
 	if err != nil {
 		s.SendJSON(w, http.StatusInternalServerError, models.APIResponse{
@@ -250,13 +210,8 @@ func (s *Server) HandleCompose(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-
-	// Save to database
 	imagePath := "/static/uploads/" + filename
-	_, err = s.DB.Exec(`
-		INSERT INTO images (user_id, path)
-		VALUES (?, ?)
-	`, user.ID, imagePath)
+	_, err = s.DB.CreateImage(user.ID, imagePath)
 
 	if err != nil {
 		os.Remove(filePath)
@@ -309,8 +264,6 @@ func drawOverlay(dst *image.RGBA, overlay image.Image, x, y int) {
 
 			srcColor := overlay.At(bounds.Min.X+ox, bounds.Min.Y+oy)
 			dstColor := dst.At(dstX, dstY)
-
-			// Alpha blending
 			srcR, srcG, srcB, srcA := colorToRGBA(srcColor)
 			dstR, dstG, dstB, dstA := colorToRGBA(dstColor)
 
@@ -339,4 +292,3 @@ func colorToRGBA(c color.Color) (r, g, b, a uint8) {
 	r32, g32, b32, a32 := c.RGBA()
 	return uint8(r32 >> 8), uint8(g32 >> 8), uint8(b32 >> 8), uint8(a32 >> 8)
 }
-

@@ -3,29 +3,22 @@ package server
 import (
 	"camagru/internal/auth"
 	"camagru/internal/models"
-	"fmt"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
 )
 
-// Page handlers
 func (s *Server) HandleHome(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/" {
 		http.NotFound(w, r)
 		return
 	}
-	
-	// Check if user is logged in
 	user, err := s.GetCurrentUser(r)
 	if err != nil || user == nil || !user.Verified {
-		// Not logged in - redirect to gallery
 		http.Redirect(w, r, "/gallery", http.StatusFound)
 		return
 	}
-	
-	// Logged in - show home page
 	http.ServeFile(w, r, "./web/static/pages/home.html")
 }
 
@@ -34,7 +27,6 @@ func (s *Server) HandleLoginPage(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "./web/static/pages/login.html")
 		return
 	}
-	// POST requests handled by handleLogin
 	if r.Method == "POST" {
 		s.HandleLogin(w, r)
 		return
@@ -47,7 +39,6 @@ func (s *Server) HandleRegisterPage(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "./web/static/pages/register.html")
 		return
 	}
-	// POST requests handled by handleRegister
 	if r.Method == "POST" {
 		s.HandleRegister(w, r)
 		return
@@ -75,7 +66,6 @@ func (s *Server) HandleUnauthorizedPage(w http.ResponseWriter, r *http.Request) 
 	http.ServeFile(w, r, "./web/static/pages/unauthorized.html")
 }
 
-// API handlers
 func (s *Server) HandleCurrentUser(w http.ResponseWriter, r *http.Request) {
 	user, err := s.GetCurrentUser(r)
 	if err != nil {
@@ -96,23 +86,13 @@ func (s *Server) HandleCurrentUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) HandleAssets(w http.ResponseWriter, r *http.Request) {
-	rows, err := s.DB.Query("SELECT id, name, path FROM assets ORDER BY id")
+	assets, err := s.DB.GetAssets()
 	if err != nil {
 		s.SendJSON(w, http.StatusInternalServerError, models.APIResponse{
 			Success: false,
 			Message: "Failed to load assets",
 		})
 		return
-	}
-	defer rows.Close()
-
-	var assets []models.Asset
-	for rows.Next() {
-		var asset models.Asset
-		if err := rows.Scan(&asset.ID, &asset.Name, &asset.Path); err != nil {
-			continue
-		}
-		assets = append(assets, asset)
 	}
 
 	s.SendJSON(w, http.StatusOK, models.APIResponse{
@@ -127,17 +107,7 @@ func (s *Server) HandleGallery(w http.ResponseWriter, r *http.Request) {
 		page = 1
 	}
 	limit := 12
-	offset := (page - 1) * limit
-
-	// Get images with pagination
-	rows, err := s.DB.Query(`
-		SELECT i.id, i.user_id, i.path, i.created_at, u.username,
-			(SELECT COUNT(*) FROM likes WHERE image_id = i.id) as like_count
-		FROM images i
-		JOIN users u ON i.user_id = u.id
-		ORDER BY i.created_at DESC
-		LIMIT ? OFFSET ?
-	`, limit, offset)
+	images, total, err := s.DB.GetImagesPaginated(page, limit)
 	if err != nil {
 		s.SendJSON(w, http.StatusInternalServerError, models.APIResponse{
 			Success: false,
@@ -145,71 +115,28 @@ func (s *Server) HandleGallery(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-	defer rows.Close()
-
-	var images []models.Image
-	var imageIDs []int
-	for rows.Next() {
-		var img models.Image
-		if err := rows.Scan(&img.ID, &img.UserID, &img.Path, &img.CreatedAt, &img.Author, &img.Likes); err != nil {
-			continue
-		}
-		images = append(images, img)
-		imageIDs = append(imageIDs, img.ID)
-	}
-
-	// Check if user liked these images
 	user, _ := s.GetCurrentUser(r)
-	if user != nil && len(imageIDs) > 0 {
-		placeholders := strings.Repeat("?,", len(imageIDs))
-		placeholders = placeholders[:len(placeholders)-1]
-		query := fmt.Sprintf("SELECT image_id FROM likes WHERE user_id = ? AND image_id IN (%s)", placeholders)
-		args := []interface{}{user.ID}
-		for _, id := range imageIDs {
-			args = append(args, id)
+	if user != nil && len(images) > 0 {
+		imageIDs := make([]int, 0, len(images))
+		for _, img := range images {
+			imageIDs = append(imageIDs, img.ID)
 		}
-		likeRows, err := s.DB.Query(query, args...)
+		likedMap, err := s.DB.GetLikedImageIDs(user.ID, imageIDs)
 		if err == nil {
-			likedMap := make(map[int]bool)
-			for likeRows.Next() {
-				var imgID int
-				likeRows.Scan(&imgID)
-				likedMap[imgID] = true
-			}
-			likeRows.Close()
 			for i := range images {
 				images[i].Liked = likedMap[images[i].ID]
 			}
 		}
 	}
-
-	// Get comments for each image
 	for i := range images {
-		commentRows, err := s.DB.Query(`
-			SELECT c.id, c.body, c.created_at, u.username
-			FROM comments c
-			JOIN users u ON c.user_id = u.id
-			WHERE c.image_id = ?
-			ORDER BY c.created_at DESC
-			LIMIT 10
-		`, images[i].ID)
+		comments, err := s.DB.GetCommentsByImageID(images[i].ID, 10)
 		if err == nil {
-			var comments []models.Comment
-			for commentRows.Next() {
-				var c models.Comment
-				commentRows.Scan(&c.ID, &c.Body, &c.CreatedAt, &c.Author)
-				comments = append(comments, c)
-			}
-			commentRows.Close()
 			images[i].Comments = comments
 		}
 	}
 
-	// Get total count and calculate total pages
-	var total int
-	s.DB.QueryRow("SELECT COUNT(*) FROM images").Scan(&total)
-	hasMore := offset+limit < total
-	totalPages := (total + limit - 1) / limit // Ceiling division
+	hasMore := (page-1)*limit+len(images) < total
+	totalPages := (total + limit - 1) / limit
 	if totalPages == 0 {
 		totalPages = 1
 	}
@@ -217,11 +144,11 @@ func (s *Server) HandleGallery(w http.ResponseWriter, r *http.Request) {
 	s.SendJSON(w, http.StatusOK, models.APIResponse{
 		Success: true,
 		Data: map[string]interface{}{
-			"items":      images,
-			"hasMore":    hasMore,
-			"totalPages": totalPages,
+			"items":       images,
+			"hasMore":     hasMore,
+			"totalPages":  totalPages,
 			"currentPage": page,
-			"total":      total,
+			"total":       total,
 		},
 	})
 }
@@ -249,20 +176,15 @@ func (s *Server) HandleLike(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-
-	// Check if already liked
-	var exists int
-	err = s.DB.QueryRow("SELECT COUNT(*) FROM likes WHERE user_id = ? AND image_id = ?", user.ID, imageID).Scan(&exists)
-	if err == nil && exists > 0 {
+	exists, err := s.DB.LikeExists(user.ID, imageID)
+	if err == nil && exists {
 		s.SendJSON(w, http.StatusBadRequest, models.APIResponse{
 			Success: false,
 			Message: "Already liked",
 		})
 		return
 	}
-
-	// Insert like
-	_, err = s.DB.Exec("INSERT INTO likes (user_id, image_id) VALUES (?, ?)", user.ID, imageID)
+	err = s.DB.CreateLike(user.ID, imageID)
 	if err != nil {
 		s.SendJSON(w, http.StatusInternalServerError, models.APIResponse{
 			Success: false,
@@ -270,20 +192,29 @@ func (s *Server) HandleLike(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
+	img, err := s.DB.GetImageByID(imageID)
+	if err != nil {
+		s.SendJSON(w, http.StatusOK, models.APIResponse{
+			Success: true,
+			Message: "Image liked",
+		})
+		return
+	}
 
-	// Get image owner to send notification
-	var imageOwnerID int
-	var imageOwnerEmail string
-	var imageOwnerNotifications bool
-	err = s.DB.QueryRow(`
-		SELECT u.id, u.email, u.comment_notifications
-		FROM images i
-		JOIN users u ON i.user_id = u.id
-		WHERE i.id = ?
-	`, imageID).Scan(&imageOwnerID, &imageOwnerEmail, &imageOwnerNotifications)
+	imageOwner, err := s.DB.GetUserByID(img.UserID)
+	if err != nil {
+		s.SendJSON(w, http.StatusOK, models.APIResponse{
+			Success: true,
+			Message: "Image liked",
+		})
+		return
+	}
+
+	imageOwnerID := imageOwner.ID
+	imageOwnerEmail := imageOwner.Email
+	imageOwnerNotifications := imageOwner.CommentNotifications
 
 	if err == nil && imageOwnerID != user.ID && imageOwnerNotifications {
-		// Send email notification
 		go s.SendLikeNotification(imageOwnerEmail, user.Username)
 	}
 
@@ -317,9 +248,7 @@ func (s *Server) HandleComment(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-
-	// Insert comment
-	_, err = s.DB.Exec("INSERT INTO comments (image_id, user_id, body) VALUES (?, ?, ?)", imageID, user.ID, body)
+	_, err = s.DB.CreateComment(imageID, user.ID, body)
 	if err != nil {
 		s.SendJSON(w, http.StatusInternalServerError, models.APIResponse{
 			Success: false,
@@ -327,20 +256,29 @@ func (s *Server) HandleComment(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
+	img, err := s.DB.GetImageByID(imageID)
+	if err != nil {
+		s.SendJSON(w, http.StatusOK, models.APIResponse{
+			Success: true,
+			Message: "Comment added",
+		})
+		return
+	}
 
-	// Get image owner to send notification
-	var imageOwnerID int
-	var imageOwnerEmail string
-	var imageOwnerNotifications bool
-	err = s.DB.QueryRow(`
-		SELECT u.id, u.email, u.comment_notifications
-		FROM images i
-		JOIN users u ON i.user_id = u.id
-		WHERE i.id = ?
-	`, imageID).Scan(&imageOwnerID, &imageOwnerEmail, &imageOwnerNotifications)
+	imageOwner, err := s.DB.GetUserByID(img.UserID)
+	if err != nil {
+		s.SendJSON(w, http.StatusOK, models.APIResponse{
+			Success: true,
+			Message: "Comment added",
+		})
+		return
+	}
+
+	imageOwnerID := imageOwner.ID
+	imageOwnerEmail := imageOwner.Email
+	imageOwnerNotifications := imageOwner.CommentNotifications
 
 	if err == nil && imageOwnerID != user.ID && imageOwnerNotifications {
-		// Send email notification
 		go s.SendCommentNotification(imageOwnerEmail, user.Username, body)
 	}
 
@@ -373,10 +311,7 @@ func (s *Server) HandleDeleteImage(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-
-	// Verify ownership
-	var ownerID int
-	err = s.DB.QueryRow("SELECT user_id FROM images WHERE id = ?", imageID).Scan(&ownerID)
+	ownerID, err := s.DB.GetImageOwner(imageID)
 	if err != nil || ownerID != user.ID {
 		s.SendJSON(w, http.StatusForbidden, models.APIResponse{
 			Success: false,
@@ -384,13 +319,7 @@ func (s *Server) HandleDeleteImage(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-
-	// Get image path
-	var path string
-	s.DB.QueryRow("SELECT path FROM images WHERE id = ?", imageID).Scan(&path)
-
-	// Delete from database (cascade will handle likes/comments)
-	_, err = s.DB.Exec("DELETE FROM images WHERE id = ?", imageID)
+	img, err := s.DB.GetImageByID(imageID)
 	if err != nil {
 		s.SendJSON(w, http.StatusInternalServerError, models.APIResponse{
 			Success: false,
@@ -398,10 +327,16 @@ func (s *Server) HandleDeleteImage(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-
-	// Delete file
+	path := img.Path
+	err = s.DB.DeleteImage(imageID)
+	if err != nil {
+		s.SendJSON(w, http.StatusInternalServerError, models.APIResponse{
+			Success: false,
+			Message: "Failed to delete image",
+		})
+		return
+	}
 	if path != "" && strings.HasPrefix(path, "/static/uploads/") {
-		// Convert /static/uploads/filename.jpg to ./data/uploads/filename.jpg
 		filename := strings.TrimPrefix(path, "/static/uploads/")
 		filePath := "./data/uploads/" + filename
 		os.Remove(filePath)
@@ -432,37 +367,52 @@ func (s *Server) HandleUpdateUser(w http.ResponseWriter, r *http.Request) {
 	email := strings.TrimSpace(r.FormValue("email"))
 	password := r.FormValue("password")
 
-	updates := []string{}
-	args := []interface{}{}
+	updateUsername := ""
+	updateEmail := ""
+	updatePassword := ""
 
 	if username != "" && username != user.Username {
-		// Check if username exists
-		var exists int
-		s.DB.QueryRow("SELECT COUNT(*) FROM users WHERE username = ? AND id != ?", username, user.ID).Scan(&exists)
-		if exists > 0 {
-			s.SendJSON(w, http.StatusBadRequest, models.APIResponse{
+		usernameExists, _, err := s.DB.UserExists(username, "")
+		if err != nil {
+			s.SendJSON(w, http.StatusInternalServerError, models.APIResponse{
 				Success: false,
-				Message: "Username already taken",
+				Message: "Internal server error",
 			})
 			return
 		}
-		updates = append(updates, "username = ?")
-		args = append(args, username)
+		if usernameExists {
+			existingUser, err := s.DB.GetUserByUsernameOrEmail(username)
+			if err == nil && existingUser.ID != user.ID {
+				s.SendJSON(w, http.StatusBadRequest, models.APIResponse{
+					Success: false,
+					Message: "Username already taken",
+				})
+				return
+			}
+		}
+		updateUsername = username
 	}
 
 	if email != "" && email != user.Email {
-		// Check if email exists
-		var exists int
-		s.DB.QueryRow("SELECT COUNT(*) FROM users WHERE email = ? AND id != ?", email, user.ID).Scan(&exists)
-		if exists > 0 {
-			s.SendJSON(w, http.StatusBadRequest, models.APIResponse{
+		_, emailExists, err := s.DB.UserExists("", email)
+		if err != nil {
+			s.SendJSON(w, http.StatusInternalServerError, models.APIResponse{
 				Success: false,
-				Message: "Email already taken",
+				Message: "Internal server error",
 			})
 			return
 		}
-		updates = append(updates, "email = ?")
-		args = append(args, email)
+		if emailExists {
+			existingUser, err := s.DB.GetUserByUsernameOrEmail(email)
+			if err == nil && existingUser.ID != user.ID {
+				s.SendJSON(w, http.StatusBadRequest, models.APIResponse{
+					Success: false,
+					Message: "Email already taken",
+				})
+				return
+			}
+		}
+		updateEmail = email
 	}
 
 	if password != "" {
@@ -474,11 +424,10 @@ func (s *Server) HandleUpdateUser(w http.ResponseWriter, r *http.Request) {
 			})
 			return
 		}
-		updates = append(updates, "password_hash = ?")
-		args = append(args, hash)
+		updatePassword = hash
 	}
 
-	if len(updates) == 0 {
+	if updateUsername == "" && updateEmail == "" && updatePassword == "" {
 		s.SendJSON(w, http.StatusBadRequest, models.APIResponse{
 			Success: false,
 			Message: "No changes provided",
@@ -486,9 +435,7 @@ func (s *Server) HandleUpdateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	args = append(args, user.ID)
-	query := "UPDATE users SET " + strings.Join(updates, ", ") + " WHERE id = ?"
-	_, err = s.DB.Exec(query, args...)
+	err = s.DB.UpdateUser(user.ID, updateUsername, updateEmail, updatePassword)
 	if err != nil {
 		s.SendJSON(w, http.StatusInternalServerError, models.APIResponse{
 			Success: false,
@@ -534,7 +481,7 @@ func (s *Server) HandleUserPreferences(w http.ResponseWriter, r *http.Request) {
 		}
 
 		notifications := r.FormValue("comment_notifications") == "true"
-		_, err = s.DB.Exec("UPDATE users SET comment_notifications = ? WHERE id = ?", notifications, user.ID)
+		err = s.DB.UpdateUserPreferences(user.ID, notifications)
 		if err != nil {
 			s.SendJSON(w, http.StatusInternalServerError, models.APIResponse{
 				Success: false,
@@ -567,15 +514,7 @@ func (s *Server) HandleUserImages(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-
-	// Get user's images, most recent first
-	rows, err := s.DB.Query(`
-		SELECT id, path, created_at
-		FROM images
-		WHERE user_id = ?
-		ORDER BY created_at DESC
-		LIMIT 20
-	`, user.ID)
+	userImages, err := s.DB.GetUserImages(user.ID, 20)
 	if err != nil {
 		s.SendJSON(w, http.StatusInternalServerError, models.APIResponse{
 			Success: false,
@@ -583,14 +522,9 @@ func (s *Server) HandleUserImages(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-	defer rows.Close()
 
-	var images []map[string]interface{}
-	for rows.Next() {
-		var img models.Image
-		if err := rows.Scan(&img.ID, &img.Path, &img.CreatedAt); err != nil {
-			continue
-		}
+	images := make([]map[string]interface{}, 0, len(userImages))
+	for _, img := range userImages {
 		images = append(images, map[string]interface{}{
 			"id":         img.ID,
 			"path":       img.Path,
@@ -603,4 +537,3 @@ func (s *Server) HandleUserImages(w http.ResponseWriter, r *http.Request) {
 		Data:    images,
 	})
 }
-

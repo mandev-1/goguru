@@ -78,14 +78,11 @@ Camagru Team
 }
 
 func (s *Server) SendEmail(to, subject, body string) {
-	// Get SMTP configuration from environment or use defaults
 	smtpHost := os.Getenv("SMTP_HOST")
 	smtpPort := os.Getenv("SMTP_PORT")
 	smtpUser := os.Getenv("SMTP_USER")
 	smtpPass := os.Getenv("SMTP_PASS")
 	fromEmail := os.Getenv("FROM_EMAIL")
-
-	// Default to localhost SMTP for development (MailHog)
 	if smtpHost == "" {
 		smtpHost = "mailhog"
 	}
@@ -95,20 +92,12 @@ func (s *Server) SendEmail(to, subject, body string) {
 	if fromEmail == "" {
 		fromEmail = "noreply@camagru.local"
 	}
-
-	// Compose email
 	msg := fmt.Sprintf("From: %s\r\nTo: %s\r\nSubject: %s\r\n\r\n%s", fromEmail, to, subject, body)
-
-	// Send email
 	addr := fmt.Sprintf("%s:%s", smtpHost, smtpPort)
-	
-	// MailHog doesn't require authentication, so only use auth if credentials are provided
 	if smtpUser != "" && smtpPass != "" {
 		auth := smtp.PlainAuth("", smtpUser, smtpPass, smtpHost)
 		smtp.SendMail(addr, auth, fromEmail, []string{to}, []byte(msg))
 	} else {
-		// Send without authentication (for MailHog)
 		smtp.SendMail(addr, nil, fromEmail, []string{to}, []byte(msg))
 	}
 }
-
