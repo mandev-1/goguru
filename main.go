@@ -4,6 +4,7 @@ import (
 	"camagru/internal/config"
 	"camagru/internal/database"
 	"camagru/internal/server"
+	"fmt"
 	"net/http"
 	"os"
 )
@@ -27,7 +28,9 @@ func main() {
 	if port == "" {
 		port = "8080"
 	}
+	fmt.Printf("Server starting on http://localhost:%s\n", port)
 	if err := http.ListenAndServe(":"+port, handler); err != nil {
+		fmt.Printf("Server error: %v\n", err)
 		os.Exit(1)
 	}
 }

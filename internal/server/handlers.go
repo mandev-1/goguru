@@ -24,6 +24,11 @@ func (s *Server) HandleHome(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) HandleLoginPage(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
+		user, err := s.GetCurrentUser(r)
+		if err == nil && user != nil && user.Verified {
+			http.Redirect(w, r, "/gallery", http.StatusFound)
+			return
+		}
 		http.ServeFile(w, r, "./web/static/pages/login.html")
 		return
 	}
@@ -36,6 +41,11 @@ func (s *Server) HandleLoginPage(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) HandleRegisterPage(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
+		user, err := s.GetCurrentUser(r)
+		if err == nil && user != nil && user.Verified {
+			http.Redirect(w, r, "/gallery", http.StatusFound)
+			return
+		}
 		http.ServeFile(w, r, "./web/static/pages/register.html")
 		return
 	}
@@ -214,7 +224,7 @@ func (s *Server) HandleLike(w http.ResponseWriter, r *http.Request) {
 	imageOwnerEmail := imageOwner.Email
 	imageOwnerNotifications := imageOwner.CommentNotifications
 
-	if err == nil && imageOwnerID != user.ID && imageOwnerNotifications {
+	if imageOwnerID != user.ID && imageOwnerNotifications {
 		go s.SendLikeNotification(imageOwnerEmail, user.Username)
 	}
 
@@ -278,7 +288,7 @@ func (s *Server) HandleComment(w http.ResponseWriter, r *http.Request) {
 	imageOwnerEmail := imageOwner.Email
 	imageOwnerNotifications := imageOwner.CommentNotifications
 
-	if err == nil && imageOwnerID != user.ID && imageOwnerNotifications {
+	if imageOwnerID != user.ID && imageOwnerNotifications {
 		go s.SendCommentNotification(imageOwnerEmail, user.Username, body)
 	}
 

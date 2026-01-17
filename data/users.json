@@ -1,0 +1,28 @@
+{
+  "1": {
+    "id": 1,
+    "username": "DROP DATABASE",
+    "email": "carl@test.com",
+    "password_hash": "$2a$10$I.Qion6cDAWG6Bx2ciroae2eZbQIbO26dx2K23fMVFDDeG1nChyiK",
+    "verified": true,
+    "verification_token": "",
+    "reset_token": "",
+    "reset_expires": null,
+    "session_token": "bcff0fa1eba4699bc16596b00a0cecc8aa262251068d27d65a9f6697955041ed",
+    "comment_notifications": true,
+    "created_at": "2026-01-17T17:46:26.343179494Z"
+  },
+  "2": {
+    "id": 2,
+    "username": "Monke67",
+    "email": "monke@test.com",
+    "password_hash": "$2a$10$ulGg8Nw6q8Q6rHkb7J5aceHnbVwX6VvwC7P/olVLWUIR34vvMoPgK",
+    "verified": true,
+    "verification_token": "",
+    "reset_token": "",
+    "reset_expires": null,
+    "session_token": "",
+    "comment_notifications": true,
+    "created_at": "2026-01-17T18:11:54.125493758Z"
+  }
+}

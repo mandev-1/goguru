@@ -1,0 +1,27 @@
+{
+  "1": {
+    "id": 1,
+    "name": "Cat",
+    "path": "/static/assets/cat.png"
+  },
+  "2": {
+    "id": 2,
+    "name": "Cat 2",
+    "path": "/static/assets/cat2.png"
+  },
+  "3": {
+    "id": 3,
+    "name": "Caughing Cat",
+    "path": "/static/assets/caughing_cat.png"
+  },
+  "4": {
+    "id": 4,
+    "name": "Halo",
+    "path": "/static/assets/halo.png"
+  },
+  "5": {
+    "id": 5,
+    "name": "Necklace",
+    "path": "/static/assets/necklace.png"
+  }
+}

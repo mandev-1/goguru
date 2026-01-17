@@ -33,4 +33,3 @@ func (s *Server) SetupRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/reset-password", s.HandleResetPassword)
 	mux.HandleFunc("/resend-verification", s.HandleResendVerification)
 }
-

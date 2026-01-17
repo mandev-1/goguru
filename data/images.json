@@ -1,0 +1,14 @@
+{
+  "1": {
+    "id": 1,
+    "user_id": 1,
+    "path": "/static/uploads/1_DROP_DATABASE_1768672069.jpg",
+    "created_at": "2026-01-17T17:47:49.29003789Z"
+  },
+  "2": {
+    "id": 2,
+    "user_id": 1,
+    "path": "/static/uploads/1_DROP_DATABASE_1768672110.jpg",
+    "created_at": "2026-01-17T17:48:30.129603313Z"
+  }
+}
